@@ -118,6 +118,22 @@ def crear_tablas():
             ]
         for sql in tablas:
             cursor.execute(sql)
+        if obtener_motor() == "sqlite":
+            cursor.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_empleado_correo ON empleado(correo)"
+            )
+        else: 
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'empleado'
+                AND COLUMN_NAME = 'correo'
+                AND NON_UNIQUE = 0
+            """)
+            if cursor.fetchone()[0] == 0:
+                cursor.execute(
+                    "CREATE UNIQUE INDEX uq_empleado_correo ON empleado(correo)"
+                )
         conexion.commit()
     except Exception:
         if conexion:

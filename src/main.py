@@ -1,3 +1,4 @@
+from persistencia.semilla_db import ejecutar_semilla
 from dominio.Gestion_departamento import GestionDepartamento
 from dominio.gestionPermisos import GestionPermisos
 from persistencia.crear_bd import crear_tablas
@@ -62,6 +63,7 @@ def main():
 if __name__ == "__main__":
     try:
         crear_tablas()
+        ejecutar_semilla()
     except Exception as error:
         print("Error al preparar la base de datos:", error)
     else:
