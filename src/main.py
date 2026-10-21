@@ -1,7 +1,7 @@
-from persistencia.semilla_db import ejecutar_semilla
 from dominio.Gestion_departamento import GestionDepartamento
 from dominio.gestionPermisos import GestionPermisos
 from persistencia.crear_bd import crear_tablas
+from persistencia.semilla_db import ejecutar_semilla
 from menus.menu_dominio_empleado import menu_dominio_empleado
 from menus.menu_dominio_departamento import menu_dominio_departamento
 from menus.menu_dominio_proyecto import menu_dominio_proyecto
@@ -65,6 +65,6 @@ if __name__ == "__main__":
         crear_tablas()
         ejecutar_semilla()
     except Exception as error:
-        print("Error al preparar la base de datos:", error)
+        print("No fue posible preparar la base de datos. Revisa la conexion y vuelve a intentarlo.")
     else:
         main()

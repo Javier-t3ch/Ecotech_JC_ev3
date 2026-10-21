@@ -1,5 +1,9 @@
+from menus.validaciones import (
+    ErrorFormulario, explicar_error, preguntar_reintento,
+    leer_texto, leer_fecha, leer_entero,
+    leer_confirmacion
+)
 from complementos.complementos import limpiar_pantalla
-from datetime import date
 from dominio.proyecto import Proyecto
 from persistencia.proyecto_dao import ProyectoDao
 
@@ -15,28 +19,39 @@ def mostrar_menu_proyecto():
 
 
 def main_proyecto():
+    reintento = None
     while True:
-        limpiar_pantalla()
-        mostrar_menu_proyecto()
-        opcion = input("Seleccione una opcion: ")
-        limpiar_pantalla()
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            mostrar_menu_proyecto()
+            opcion = input("Seleccione una opcion: ")
+            limpiar_pantalla()
 
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "1":
             try:
-                nombre = input("Nombre: ").strip()
-                fecha_inicio = date.fromisoformat(input("Fecha de inicio (AAAA-MM-DD): ").strip())
-                descripcion = input("Descripcion: ").strip()
+                nombre = leer_texto("Nombre: ", campo="Nombre", maximo=100)
+                fecha_inicio = leer_fecha("Fecha de inicio (AAAA-MM-DD): ")
+                descripcion = leer_texto("Descripcion: ", campo="La descripcion", maximo=500)
                 if not nombre or not descripcion:
-                    print("Nombre y descripcion son obligatorios.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Nombre y descripcion son obligatorios.")
                 proyecto = Proyecto(nombre, fecha_inicio, descripcion)
                 ProyectoDao.insertar(proyecto)
                 print("Proyecto registrado con ID:", proyecto._id_proyecto)
-            except ValueError:
-                print("Fecha incorrecta. Usa AAAA-MM-DD.")
+            except ValueError as error:
+                explicar_error(error, 'registrar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al registrar proyecto:", error)
+                explicar_error(error, 'registrar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "2":
             try:
@@ -47,37 +62,39 @@ def main_proyecto():
                     for p in proyectos:
                         print(f"ID: {p._id_proyecto} | {p._nombre} | Inicio: {p._fecha_inicio} | {p._descripcion}")
             except Exception as error:
-                print("Error al listar proyectos:", error)
+                explicar_error(error, 'consultar proyecto')
 
         elif opcion == "3":
             try:
-                id_proyecto = int(input("ID del proyecto: "))
+                id_proyecto = leer_entero("ID del proyecto: ")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
-                    print("Proyecto no encontrado.")
+                    raise ErrorFormulario("Proyecto no encontrado.")
                 else:
                     print(f"ID: {p._id_proyecto} | {p._nombre} | Inicio: {p._fecha_inicio} | {p._descripcion}")
-            except ValueError:
-                print("Debes ingresar un ID numerico.")
+            except ValueError as error:
+                explicar_error(error, 'buscar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al buscar proyecto:", error)
+                explicar_error(error, 'buscar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "4":
             try:
-                id_proyecto = int(input("ID del proyecto a actualizar: "))
+                id_proyecto = leer_entero("ID del proyecto a actualizar: ")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
-                    print("Proyecto no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
-                nombre = input(f"Nombre [{p._nombre}]: ").strip()
-                fecha_texto = input(f"Fecha de inicio [{p._fecha_inicio}] (AAAA-MM-DD): ").strip()
-                descripcion = input(f"Descripcion [{p._descripcion}]: ").strip()
+                    raise ErrorFormulario("Proyecto no encontrado.")
+                nombre = leer_texto(f"Nombre [{p._nombre}]: ", obligatorio=False, campo="Nombre", maximo=100)
+                fecha_texto = leer_fecha(f"Fecha de inicio [{p._fecha_inicio}] (AAAA-MM-DD): ", obligatorio=False)
+                descripcion = leer_texto(f"Descripcion [{p._descripcion}]: ", obligatorio=False, campo="La descripcion", maximo=500)
                 if not (nombre or fecha_texto or descripcion):
-                    print("No ingresaste cambios.")
-                    input("\nPresione Enter para continuar...")
-                    continue
-                fecha = date.fromisoformat(fecha_texto) if fecha_texto else p._fecha_inicio
+                    raise ErrorFormulario("No ingresaste cambios.")
+                fecha = fecha_texto if fecha_texto is not None else p._fecha_inicio
                 actualizado = Proyecto(
                     nombre=nombre or p._nombre,
                     fecha_inicio=fecha,
@@ -87,37 +104,49 @@ def main_proyecto():
                 if ProyectoDao.actualizar(actualizado):
                     print("Proyecto actualizado.")
                 else:
-                    print("No se detectaron cambios guardados.")
-            except ValueError:
-                print("ID o fecha incorrectos.")
+                    raise ErrorFormulario("No se detectaron cambios guardados.")
+            except ValueError as error:
+                explicar_error(error, 'actualizar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al actualizar proyecto:", error)
+                explicar_error(error, 'actualizar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "5":
             try:
-                id_proyecto = int(input("ID del proyecto a eliminar: "))
+                id_proyecto = leer_entero("ID del proyecto a eliminar: ")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
-                    print("Proyecto no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
-                confirmar = input(f"Eliminar {p._nombre}? (s/n): ").strip().lower()
+                    raise ErrorFormulario("Proyecto no encontrado.")
+                confirmar = leer_confirmacion(f"Eliminar {p._nombre}? (s/n): ")
                 if confirmar == "s":
                     if ProyectoDao.eliminar(id_proyecto):
                         print("Proyecto eliminado.")
                     else:
-                        print("No se pudo eliminar el proyecto.")
+                        raise ErrorFormulario("No se pudo eliminar el proyecto.")
                 else:
                     print("Eliminacion cancelada.")
-            except ValueError:
-                print("Debes ingresar un ID numerico.")
+            except ValueError as error:
+                explicar_error(error, 'eliminar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al eliminar proyecto:", error)
+                explicar_error(error, 'eliminar proyecto')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "0":
             return
         else:
             print("Opcion no valida.")
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")
 
 

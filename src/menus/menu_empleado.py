@@ -1,7 +1,19 @@
-from datetime import date
+from menus.validaciones import (
+    ErrorFormulario, explicar_error, preguntar_reintento,
+    leer_texto, leer_telefono, leer_correo,
+    leer_fecha, leer_entero, leer_real, leer_confirmacion
+)
 from dominio.empleado import Empleado
 from persistencia.empleado_dao import EmpleadoDAO
 from complementos.complementos import limpiar_pantalla
+
+
+def correo_ya_registrado(correo, excluir_id=None):
+    """Detecta correos repetidos antes de intentar guardar al empleado."""
+    return any(
+        e._correo.casefold() == correo.casefold() and e._id != excluir_id
+        for e in EmpleadoDAO.listar()
+    )
 
 
 def mostrar_menu_empleado():
@@ -15,28 +27,41 @@ def mostrar_menu_empleado():
 
 
 def main_empleado():
+    reintento = None
     while True:
-        limpiar_pantalla()
-        mostrar_menu_empleado()
-        opcion = input("Seleccione una opcion: ")
-        limpiar_pantalla()
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            mostrar_menu_empleado()
+            opcion = input("Seleccione una opcion: ")
+            limpiar_pantalla()
 
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "1":
             try:
-                nombre = input("Nombre: ").strip()
-                direccion = input("Direccion: ").strip()
-                numero = input("Numero de telefono: ").strip()
-                correo = input("Correo: ").strip()
-                fecha_contrato = date.fromisoformat(input("Fecha de contrato (AAAA-MM-DD): ").strip())
-                salario = float(input("Salario: "))
-                cargo = input("Cargo: ").strip()
+                nombre = leer_texto("Nombre: ", campo="Nombre", maximo=100, persona=True)
+                direccion = leer_texto("Direccion: ", campo="La direccion", maximo=200)
+                numero = leer_telefono("Numero de telefono: ")
+                correo = leer_correo("Correo: ", ocupado=correo_ya_registrado)
+                fecha_contrato = leer_fecha("Fecha de contrato (AAAA-MM-DD): ")
+                salario = leer_real("Salario: ")
+                cargo = leer_texto("Cargo: ", campo="El cargo", maximo=100)
                 empleado = Empleado(nombre, direccion, numero, correo, fecha_contrato, salario, cargo)
                 EmpleadoDAO.insertar(empleado)
                 print("Empleado registrado con ID:", empleado._id)
             except ValueError as error:
-                print("Datos incorrectos:", error)
+                explicar_error(error, 'registrar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al registrar el empleado:", error)
+                explicar_error(error, 'registrar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "2":
             try:
@@ -47,46 +72,50 @@ def main_empleado():
                     for empleado in empleados:
                         print(empleado.mostrar_datos())
             except Exception as error:
-                print("Error al listar empleados:", error)
+                explicar_error(error, 'consultar empleado')
 
         elif opcion == "3":
             try:
-                id_empleado = int(input("ID del empleado: "))
+                id_empleado = leer_entero("ID del empleado: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
+                    raise ErrorFormulario("Empleado no encontrado.")
                 else:
                     print(empleado.mostrar_datos())
                     print("Telefono:", empleado._numero)
                     print("Fecha de contrato:", empleado._fecha_contrato)
                     print("Salario:", empleado.ver_salario())
-            except ValueError:
-                print("Debes ingresar un ID numerico.")
+            except ValueError as error:
+                explicar_error(error, 'buscar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al buscar el empleado:", error)
+                explicar_error(error, 'buscar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "4":
             try:
-                id_empleado = int(input("ID del empleado a actualizar: "))
+                id_empleado = leer_entero("ID del empleado a actualizar: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
                 print("Deja el campo vacio si no quieres modificarlo.")
-                nombre = input(f"Nombre [{empleado._nombre}]: ").strip()
-                direccion = input(f"Direccion [{empleado._direccion}]: ").strip()
-                numero = input(f"Telefono [{empleado._numero}]: ").strip()
-                correo = input(f"Correo [{empleado._correo}]: ").strip()
-                fecha_texto = input(f"Fecha contrato [{empleado._fecha_contrato}] (AAAA-MM-DD): ").strip()
-                salario_texto = input(f"Salario [{empleado._salario}]: ").strip()
-                cargo = input(f"Cargo [{empleado._cargo}]: ").strip()
-                if not (nombre or direccion or numero or correo or fecha_texto or salario_texto or cargo):
-                    print("No ingresaste cambios.")
-                    input("\nPresione Enter para continuar...")
-                    continue
-                fecha = date.fromisoformat(fecha_texto) if fecha_texto else empleado._fecha_contrato
-                salario = float(salario_texto) if salario_texto else empleado._salario
+                nombre = leer_texto(f"Nombre [{empleado._nombre}]: ", obligatorio=False, campo="Nombre", maximo=100, persona=True)
+                direccion = leer_texto(f"Direccion [{empleado._direccion}]: ", obligatorio=False, campo="La direccion", maximo=200)
+                numero = leer_telefono(f"Telefono [{empleado._numero}]: ", obligatorio=False)
+                correo = leer_correo(f"Correo [{empleado._correo}]: ", obligatorio=False,
+                                     ocupado=lambda c: correo_ya_registrado(c, empleado._id))
+                fecha_texto = leer_fecha(f"Fecha contrato [{empleado._fecha_contrato}] (AAAA-MM-DD): ", obligatorio=False)
+                salario_texto = leer_real(f"Salario [{empleado._salario}]: ", obligatorio=False)
+                cargo = leer_texto(f"Cargo [{empleado._cargo}]: ", obligatorio=False, campo="El cargo", maximo=100)
+                if not (nombre or direccion or numero or correo or fecha_texto is not None
+                        or salario_texto is not None or cargo):
+                    raise ErrorFormulario("No ingresaste cambios.")
+                fecha = fecha_texto if fecha_texto is not None else empleado._fecha_contrato
+                salario = salario_texto if salario_texto is not None else empleado._salario
                 actualizado = Empleado(
                     nombre=nombre or empleado._nombre,
                     direccion=direccion or empleado._direccion,
@@ -100,38 +129,50 @@ def main_empleado():
                 if EmpleadoDAO.actualizar(actualizado):
                     print("Empleado actualizado correctamente.")
                 else:
-                    print("No se detectaron cambios guardados.")
+                    raise ErrorFormulario("No se detectaron cambios guardados.")
             except ValueError as error:
-                print("Datos incorrectos:", error)
+                explicar_error(error, 'actualizar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al actualizar el empleado:", error)
+                explicar_error(error, 'actualizar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "5":
             try:
-                id_empleado = int(input("ID del empleado a eliminar: "))
+                id_empleado = leer_entero("ID del empleado a eliminar: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
                 print(empleado.mostrar_datos())
-                confirmar = input("Confirmar eliminacion (s/n): ").lower().strip()
+                confirmar = leer_confirmacion("Confirmar eliminacion (s/n): ")
                 if confirmar == "s":
                     if EmpleadoDAO.eliminar(id_empleado):
                         print("Empleado eliminado.")
                     else:
-                        print("No se pudo eliminar el empleado.")
+                        raise ErrorFormulario("No se pudo eliminar el empleado.")
                 else:
                     print("Eliminacion cancelada.")
-            except ValueError:
-                print("Debes ingresar un ID numerico.")
+            except ValueError as error:
+                explicar_error(error, 'eliminar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Error al eliminar el empleado:", error)
+                explicar_error(error, 'eliminar empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "0":
             return
         else:
             print("Opcion no valida.")
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")
 
 

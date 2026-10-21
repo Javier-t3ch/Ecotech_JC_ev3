@@ -1,3 +1,4 @@
+from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_entero
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
@@ -6,20 +7,27 @@ from complementos.complementos import limpiar_pantalla
 
 
 def menu_dominio_departamento():
+    reintento = None
     while True:
-        limpiar_pantalla()
-        print("\n===== DOMINIO DEPARTAMENTO =====")
-        print("1. Contratar empleado (autorizado por RRHH)")
-        print("2. Agregar empleado al departamento")
-        print("3. Quitar empleado del departamento")
-        print("4. Vincular proyecto existente al departamento")
-        print("5. Editar nombre de un proyecto del departamento")
-        print("6. Desvincular proyecto del departamento")
-        print("7. Gestionar departamentos (CRUD)")
-        print("0. Volver al menu principal")
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            print("\n===== DOMINIO DEPARTAMENTO =====")
+            print("1. Contratar empleado (autorizado por RRHH)")
+            print("2. Agregar empleado al departamento")
+            print("3. Quitar empleado del departamento")
+            print("4. Vincular proyecto existente al departamento")
+            print("5. Editar nombre de un proyecto del departamento")
+            print("6. Desvincular proyecto del departamento")
+            print("7. Gestionar departamentos (CRUD)")
+            print("0. Volver al menu principal")
 
-        opcion = input("Seleccione una opcion: ")
-        limpiar_pantalla()
+            opcion = input("Seleccione una opcion: ")
+            limpiar_pantalla()
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "0":
             return
         if opcion == "7":
@@ -31,20 +39,16 @@ def menu_dominio_departamento():
             continue
 
         try:
-            id_departamento = int(input("ID del departamento: "))
+            id_departamento = leer_entero("ID del departamento: ")
             departamento = DepartamentoDAO.buscar_por_id(id_departamento)
             if departamento is None:
-                print("Departamento no encontrado.")
-                input("\nPresione Enter para continuar...")
-                continue
+                raise ErrorFormulario("Departamento no encontrado.")
 
             if opcion in ("1", "2", "3"):
-                id_empleado = int(input("ID del empleado: "))
+                id_empleado = leer_entero("ID del empleado: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
 
 
                 empleado_asociado = None
@@ -55,51 +59,45 @@ def menu_dominio_departamento():
 
                 if opcion == "1":
                     if empleado_asociado is not None:
-                        print("El empleado ya pertenece al departamento.")
-                        input("\nPresione Enter para continuar...")
-                        continue
-                    id_encargado = int(input("ID del encargado de RRHH: "))
+                        raise ErrorFormulario("El empleado ya pertenece al departamento.")
+                    id_encargado = leer_entero("ID del encargado de RRHH: ")
                     encargado = EmpleadoDAO.buscar_por_id(id_encargado)
                     if encargado is None:
-                        print("Encargado no encontrado.")
-                        input("\nPresione Enter para continuar...")
-                        continue
+                        raise ErrorFormulario("Encargado no encontrado.")
                     if departamento.contratar_empleado(empleado, encargado):
                         if DepartamentoDAO.agregar_empleado(departamento, empleado):
                             print("Empleado contratado y guardado en la base de datos.")
                         else:
-                            print("No se pudo guardar la contratacion.")
+                            raise ErrorFormulario("No se pudo guardar la contratacion.")
                     else:
-                        print("No autorizado: el encargado debe tener cargo Recursos Humanos.")
+                        raise ErrorFormulario("No autorizado: el encargado debe tener cargo Recursos Humanos.")
 
                 elif opcion == "2":
                     if empleado_asociado is not None:
-                        print("El empleado ya pertenece al departamento.")
+                        raise ErrorFormulario("El empleado ya pertenece al departamento.")
                     elif departamento.agregar_empleado(empleado):
                         if DepartamentoDAO.agregar_empleado(departamento, empleado):
                             print("Empleado agregado y guardado.")
                         else:
-                            print("No se pudo guardar la asociacion.")
+                            raise ErrorFormulario("No se pudo guardar la asociacion.")
                     else:
-                        print("No se pudo agregar al empleado.")
+                        raise ErrorFormulario("No se pudo agregar al empleado.")
 
                 elif opcion == "3":
                     if empleado_asociado is None:
-                        print("El empleado no pertenece al departamento.")
+                        raise ErrorFormulario("El empleado no pertenece al departamento.")
                     else:
                         departamento.eliminar_empleado(empleado_asociado)
                         if DepartamentoDAO.quitar_empleado(departamento, empleado):
                             print("Empleado desvinculado del departamento.")
                         else:
-                            print("No se pudo quitar la asociacion de la base de datos.")
+                            raise ErrorFormulario("No se pudo quitar la asociacion de la base de datos.")
 
             elif opcion in ("4", "5", "6"):
-                id_proyecto = int(input("ID del proyecto: "))
+                id_proyecto = leer_entero("ID del proyecto: ")
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if proyecto is None:
-                    print("Proyecto no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Proyecto no encontrado.")
 
                 proyecto_asociado = None
                 for actual in departamento._proyectos:
@@ -109,42 +107,48 @@ def menu_dominio_departamento():
 
                 if opcion == "4":
                     if proyecto_asociado is not None:
-                        print("El proyecto ya pertenece al departamento.")
+                        raise ErrorFormulario("El proyecto ya pertenece al departamento.")
                     elif departamento.crear_proyecto(proyecto):
                         if DepartamentoDAO.agregar_proyecto(departamento, proyecto):
                             print("Proyecto vinculado y guardado.")
                         else:
-                            print("No se pudo guardar la asociacion.")
+                            raise ErrorFormulario("No se pudo guardar la asociacion.")
                     else:
-                        print("No se pudo vincular el proyecto.")
+                        raise ErrorFormulario("No se pudo vincular el proyecto.")
 
                 elif opcion == "5":
                     if proyecto_asociado is None:
-                        print("El proyecto no pertenece al departamento.")
-                        input("\nPresione Enter para continuar...")
-                        continue
-                    nuevo_nombre = input("Nuevo nombre del proyecto: ").strip()
+                        raise ErrorFormulario("El proyecto no pertenece al departamento.")
+                    nuevo_nombre = leer_texto("Nuevo nombre del proyecto: ", campo="Nombre", maximo=100)
                     if departamento.editar_proyecto(proyecto_asociado, nuevo_nombre):
                         if ProyectoDao.actualizar(proyecto_asociado):
                             print("Nombre del proyecto actualizado en la base de datos.")
                         else:
-                            print("No se pudo actualizar el proyecto.")
+                            raise ErrorFormulario("No se pudo actualizar el proyecto.")
                     else:
-                        print("No se pudo editar: ingrese un nombre valido.")
+                        raise ErrorFormulario("No se pudo editar: ingrese un nombre valido.")
 
                 elif opcion == "6":
                     if proyecto_asociado is None:
-                        print("El proyecto no pertenece al departamento.")
+                        raise ErrorFormulario("El proyecto no pertenece al departamento.")
                     elif departamento.eliminar_proyecto(proyecto_asociado):
                         if DepartamentoDAO.quitar_proyecto(departamento, proyecto_asociado):
                             print("Proyecto desvinculado del departamento.")
                         else:
-                            print("No se pudo quitar la asociacion de la base de datos.")
+                            raise ErrorFormulario("No se pudo quitar la asociacion de la base de datos.")
                     else:
-                        print("No se pudo desvincular el proyecto.")
+                        raise ErrorFormulario("No se pudo desvincular el proyecto.")
 
         except ValueError as error:
-            print("Datos incorrectos:", error)
+            explicar_error(error, 'procesar la operacion de departamento')
+            hubo_error = True
+            if preguntar_reintento():
+                reintento = opcion
         except Exception as error:
-            print("Ocurrio un error:", error)
+            explicar_error(error, 'procesar la operacion de departamento')
+            hubo_error = True
+            if preguntar_reintento():
+                reintento = opcion
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")

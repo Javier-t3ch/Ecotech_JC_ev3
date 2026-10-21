@@ -1,4 +1,4 @@
-from datetime import date
+from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_fecha, leer_entero
 from complementos.complementos import limpiar_pantalla
 from dominio.registroTiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
@@ -8,17 +8,24 @@ from menus.menu_empleado import main_empleado
 
 
 def menu_dominio_empleado():
+    reintento = None
     while True:
-        print("\n===== DOMINIO EMPLEADO =====")
-        print("1. Mostrar datos de un empleado")
-        print("2. Ver salario de un empleado")
-        print("3. Registrar horas de trabajo")
-        print("4. Ver registros de horas de un empleado")
-        print("5. Gestionar empleados (CRUD)")
-        print("0. Volver al menu principal")
+        hubo_error = False
+        if reintento is None:
+            print("\n===== DOMINIO EMPLEADO =====")
+            print("1. Mostrar datos de un empleado")
+            print("2. Ver salario de un empleado")
+            print("3. Registrar horas de trabajo")
+            print("4. Ver registros de horas de un empleado")
+            print("5. Gestionar empleados (CRUD)")
+            print("0. Volver al menu principal")
 
-        opcion = input("Seleccione una opcion: ")
+            opcion = input("Seleccione una opcion: ")
 
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "0":
             
             limpiar_pantalla()
@@ -31,14 +38,11 @@ def menu_dominio_empleado():
         elif opcion in ("1", "2", "3", "4"):
             try:
                 limpiar_pantalla()
-                id_empleado = int(input("ID del empleado: "))
+                id_empleado = leer_entero("ID del empleado: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
 
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("Presione Enter para continuar...")
-                    limpiar_pantalla()
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
 
                 if opcion == "1":
                     print(empleado.mostrar_datos())
@@ -53,37 +57,23 @@ def menu_dominio_empleado():
                     limpiar_pantalla()
 
                 elif opcion == "3":
-                    id_proyecto = int(input("ID del proyecto: "))
+                    id_proyecto = leer_entero("ID del proyecto: ")
                     proyecto = ProyectoDao.buscar_por_id(id_proyecto)
 
                     if proyecto is None:
-                        print("Proyecto no encontrado.")
-                        input("Presione Enter para continuar...")
-                        limpiar_pantalla()
-                        continue
+                        raise ErrorFormulario("Proyecto no encontrado.")
 
                     if not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
-                        print("El empleado no esta asignado a ese proyecto.")
-                        input("Presione Enter para continuar...")
-                        limpiar_pantalla()
-                        continue
+                        raise ErrorFormulario("El empleado no esta asignado a ese proyecto.")
 
-                    horas = int(input("Horas trabajadas: "))
+                    horas = leer_entero("Horas trabajadas: ")
                     if horas <= 0:
-                        print("Las horas deben ser mayores que cero.")
-                        input("Presione Enter para continuar...")
-                        limpiar_pantalla()
-                        continue
+                        raise ErrorFormulario("Las horas deben ser mayores que cero.")
 
-                    fecha = date.fromisoformat(
-                        input("Fecha trabajada (AAAA-MM-DD): ").strip()
-                    )
-                    descripcion = input("Descripcion de la tarea: ").strip()
+                    fecha = leer_fecha("Fecha trabajada (AAAA-MM-DD): ")
+                    descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=500)
                     if descripcion == "":
-                        print("La descripcion no puede quedar vacia.")
-                        input("Presione Enter para continuar...")
-                        limpiar_pantalla()
-                        continue
+                        raise ErrorFormulario("La descripcion no puede quedar vacia.")
 
                     registro = RegistroTiempo(
                         horas_trabajadas=horas,
@@ -101,9 +91,7 @@ def menu_dominio_empleado():
                         input("Presione Enter para continuar...")
                         limpiar_pantalla()
                     else:
-                        print("No se pudieron guardar las horas.")
-                        input("Presione Enter para continuar...")
-                        limpiar_pantalla()
+                        raise ErrorFormulario("No se pudieron guardar las horas. Revisa la asignacion al proyecto.")
 
                 elif opcion == "4":
                     registros = RegistroTiempoDAO.listar()
@@ -133,13 +121,15 @@ def menu_dominio_empleado():
                         limpiar_pantalla()
 
             except ValueError as error:
-                print("Datos incorrectos:", error)
-                input("Presione Enter para continuar...")
-                limpiar_pantalla()
+                explicar_error(error, 'procesar la operacion de empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Ocurrio un error:", error)
-                input("Presione Enter para continuar...")
-                limpiar_pantalla()
+                explicar_error(error, 'procesar la operacion de empleado')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         else:
             print("Opcion no valida.")

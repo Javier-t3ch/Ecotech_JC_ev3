@@ -1,5 +1,5 @@
+from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_fecha, leer_entero
 from complementos.complementos import limpiar_pantalla
-from datetime import date
 from dominio.registroTiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
@@ -8,19 +8,26 @@ from menus.menu_registroTiempo import main_RegistroTiempo
 
 
 def menu_dominio_registro_tiempo():
+    reintento = None
     while True:
-        limpiar_pantalla()
-        print("\n===== DOMINIO REGISTRO DE TIEMPO =====")
-        print("1. Registrar horas de trabajo")
-        print("2. Listar todos los registros")
-        print("3. Ver registros de un empleado")
-        print("4. Ver registros de un proyecto")
-        print("5. Gestionar registros de tiempo (CRUD)")
-        print("0. Volver al menu principal")
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            print("\n===== DOMINIO REGISTRO DE TIEMPO =====")
+            print("1. Registrar horas de trabajo")
+            print("2. Listar todos los registros")
+            print("3. Ver registros de un empleado")
+            print("4. Ver registros de un proyecto")
+            print("5. Gestionar registros de tiempo (CRUD)")
+            print("0. Volver al menu principal")
 
-        opcion = input("Seleccione una opcion: ")
-        limpiar_pantalla()
+            opcion = input("Seleccione una opcion: ")
+            limpiar_pantalla()
 
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "0":
             return
         if opcion == "5":
@@ -29,39 +36,27 @@ def menu_dominio_registro_tiempo():
 
         if opcion == "1":
             try:
-                id_empleado = int(input("ID del empleado: "))
+                id_empleado = leer_entero("ID del empleado: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
 
-                id_proyecto = int(input("ID del proyecto: "))
+                id_proyecto = leer_entero("ID del proyecto: ")
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if proyecto is None:
-                    print("Proyecto no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Proyecto no encontrado.")
 
                 if not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
-                    print("El empleado no esta asignado a ese proyecto.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("El empleado no esta asignado a ese proyecto.")
 
-                horas = int(input("Horas trabajadas: "))
+                horas = leer_entero("Horas trabajadas: ")
                 if horas <= 0:
-                    print("Las horas deben ser mayores que cero.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Las horas deben ser mayores que cero.")
 
-                fecha = date.fromisoformat(
-                    input("Fecha trabajada (AAAA-MM-DD): ").strip()
-                )
-                descripcion = input("Descripcion de la tarea: ").strip()
+                fecha = leer_fecha("Fecha trabajada (AAAA-MM-DD): ")
+                descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=500)
                 if descripcion == "":
-                    print("La descripcion no puede quedar vacia.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("La descripcion no puede quedar vacia.")
 
                 registro = RegistroTiempo(
                     horas_trabajadas=horas,
@@ -74,12 +69,18 @@ def menu_dominio_registro_tiempo():
                 if RegistroTiempoDAO.insertar(registro):
                     print("Registro guardado con ID:", registro._id_registro)
                 else:
-                    print("No se pudo guardar el registro.")
+                    raise ErrorFormulario("No se pudo guardar el registro.")
 
             except ValueError as error:
-                print("Datos incorrectos:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Ocurrio un error:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "2":
             try:
@@ -97,16 +98,14 @@ def menu_dominio_registro_tiempo():
                             "| Tarea:", r._descripcion_tarea
                         )
             except Exception as error:
-                print("Error al listar registros:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
 
         elif opcion == "3":
             try:
-                id_empleado = int(input("ID del empleado: "))
+                id_empleado = leer_entero("ID del empleado: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado.")
 
                 registros = RegistroTiempoDAO.listar()
                 encontrados = False
@@ -131,18 +130,22 @@ def menu_dominio_registro_tiempo():
                     print("Este empleado no tiene registros.")
 
             except ValueError as error:
-                print("Datos incorrectos:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Ocurrio un error:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "4":
             try:
-                id_proyecto = int(input("ID del proyecto: "))
+                id_proyecto = leer_entero("ID del proyecto: ")
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if proyecto is None:
-                    print("Proyecto no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Proyecto no encontrado.")
 
                 registros = RegistroTiempoDAO.listar()
                 encontrados = False
@@ -169,10 +172,18 @@ def menu_dominio_registro_tiempo():
                     print("Este proyecto no tiene registros.")
 
             except ValueError as error:
-                print("Datos incorrectos:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
             except Exception as error:
-                print("Ocurrio un error:", error)
+                explicar_error(error, 'procesar la operacion de registro de tiempo')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         else:
             print("Opcion no valida.")
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")

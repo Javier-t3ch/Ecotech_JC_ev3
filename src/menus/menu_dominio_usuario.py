@@ -1,3 +1,8 @@
+from menus.validaciones import (
+    ErrorFormulario, explicar_error, preguntar_reintento,
+    leer_texto, leer_correo, leer_entero,
+    leer_contrasena
+)
 from complementos.complementos import limpiar_pantalla
 from getpass import getpass
 
@@ -13,60 +18,60 @@ def buscar_usuario(usuarios, id_usuario):
 
 
 def menu_dominio_usuario(usuarios):
+    reintento = None
     while True:
-        limpiar_pantalla()
-        print("\n===== DOMINIO USUARIO (DEMOSTRACION) =====")
-        print("1. Crear usuario para un empleado")
-        print("2. Autenticar usuario")
-        print("3. Cambiar contrasena")
-        print("4. Listar usuarios de la demostracion")
-        print("0. Volver al menu principal")
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            print("\n===== DOMINIO USUARIO (DEMOSTRACION) =====")
+            print("1. Crear usuario para un empleado")
+            print("2. Autenticar usuario")
+            print("3. Cambiar contrasena")
+            print("4. Listar usuarios de la demostracion")
+            print("0. Volver al menu principal")
 
-        opcion = input("Seleccione una opcion: ").strip()
-        limpiar_pantalla()
+            opcion = input("Seleccione una opcion: ").strip()
+            limpiar_pantalla()
 
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
         if opcion == "0":
             return
 
         elif opcion == "1":
             try:
-                id_empleado = int(input("ID del empleado existente: "))
+                id_empleado = leer_entero("ID del empleado existente: ")
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
-                    print("Empleado no encontrado. Registrelo primero en el CRUD.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Empleado no encontrado. Registrelo primero en el CRUD.")
 
                 repetido = False
                 for actual in usuarios:
                     if actual._empleado._id == id_empleado:
                         repetido = True
                 if repetido:
-                    print("Este empleado ya tiene un usuario en la demostracion.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Este empleado ya tiene un usuario en la demostracion.")
 
-                nombre = input("Nombre de usuario: ").strip()
-                mail = input("Correo del usuario: ").strip()
+                nombre = leer_texto("Nombre de usuario: ", campo="Nombre", maximo=100)
+                mail = leer_correo(
+                    "Correo del usuario: ",
+                    ocupado=lambda c: any(u._mail.casefold() == c.casefold() for u in usuarios)
+                )
                 if nombre == "" or "@" not in mail or "." not in mail:
-                    print("Ingrese un nombre y un correo validos.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Ingrese un nombre y un correo validos.")
 
-                contrasenia = getpass("Contrasena (minimo 8 caracteres): ")
+                contrasenia = leer_contrasena("Contrasena (minimo 8 caracteres): ")
                 if len(contrasenia) < 8:
-                    print("La contrasena debe tener al menos 8 caracteres.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("La contrasena debe tener al menos 8 caracteres.")
 
                 existe_mail = False
                 for actual in usuarios:
                     if actual._mail.lower() == mail.lower():
                         existe_mail = True
                 if existe_mail:
-                    print("Ya existe un usuario con ese correo.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Ya existe un usuario con ese correo.")
 
                 usuario = Usuario(
                     nombre=nombre,
@@ -84,19 +89,18 @@ def menu_dominio_usuario(usuarios):
                 print("Usuario creado. ID:", usuario._id_usuario)
                 print("Nota: se conserva solo mientras el programa este abierto.")
 
-            except ValueError:
-                print("El ID del empleado debe ser un numero.")
             except Exception as error:
-                print("Error al crear usuario:", error)
+                explicar_error(error, 'procesar la operacion de usuario')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion in ("2", "3"):
             try:
-                id_usuario = int(input("ID del usuario: "))
+                id_usuario = leer_entero("ID del usuario: ")
                 usuario = buscar_usuario(usuarios, id_usuario)
                 if usuario is None:
-                    print("Usuario no encontrado.")
-                    input("\nPresione Enter para continuar...")
-                    continue
+                    raise ErrorFormulario("Usuario no encontrado.")
 
                 contrasenia = getpass("Contrasena actual: ")
 
@@ -104,17 +108,20 @@ def menu_dominio_usuario(usuarios):
                     if usuario.autenticar(contrasenia):
                         print("Autenticacion correcta.")
                     else:
-                        print("Contrasena incorrecta.")
+                        raise ErrorFormulario("Contrasena incorrecta.")
 
                 elif opcion == "3":
-                    nueva = getpass("Nueva contrasena: ")
+                    nueva = leer_contrasena("Nueva contrasena (minimo 8 caracteres): ")
                     if usuario.cambiar_contrasenia(contrasenia, nueva):
                         print("Contrasena cambiada correctamente.")
                     else:
-                        print("No se pudo cambiar la contrasena.")
+                        raise ErrorFormulario("No se pudo cambiar la contrasena.")
 
-            except ValueError:
-                print("El ID del usuario debe ser un numero.")
+            except Exception as error:
+                explicar_error(error, 'procesar la operacion de usuario')
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "4":
             if not usuarios:
@@ -130,4 +137,6 @@ def menu_dominio_usuario(usuarios):
 
         else:
             print("Opcion no valida.")
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")

@@ -1,72 +1,76 @@
+from menus.validaciones import (
+    leer_texto, leer_confirmacion, ErrorFormulario,
+    explicar_error, preguntar_reintento
+)
 from complementos.complementos import limpiar_pantalla
 
 
 def menu_dominio_gestionDepartamento(gestion_departamentos):
+    reintento = None
     while True:
-        limpiar_pantalla()
-        print("\n===== DOMINIO GESTION DEPARTAMENTO (DEMOSTRACION) =====")
-        print("1. Crear departamento")
-        print("2. Buscar departamento")
-        print("3. Editar departamento")
-        print("4. Eliminar departamento")
-        print("5. Listar departamentos de la demostracion")
-        print("0. Volver al menu principal")
-
-        opcion = input("Seleccione una opcion: ").strip()
-        limpiar_pantalla()
+        hubo_error = False
+        if reintento is None:
+            limpiar_pantalla()
+            print("\n===== DOMINIO GESTION DEPARTAMENTO (DEMOSTRACION) =====")
+            print("1. Crear departamento")
+            print("2. Buscar departamento")
+            print("3. Editar departamento")
+            print("4. Eliminar departamento")
+            print("5. Listar departamentos de la demostracion")
+            print("0. Volver al menu principal")
+            opcion = input("Seleccione una opcion: ").strip()
+            limpiar_pantalla()
+        else:
+            opcion = reintento
+            reintento = None
+            limpiar_pantalla()
 
         if opcion == "0":
             return
+        elif opcion in ("1", "2", "3", "4"):
+            try:
+                if opcion == "1":
+                    nombre = leer_texto("Nombre del departamento: ", campo="Nombre", maximo=100)
+                    departamento = gestion_departamentos.crear_departamento(nombre)
+                    if departamento is False:
+                        raise ErrorFormulario("Ya existe un departamento con ese nombre.")
+                    print("Departamento creado:", departamento._nombre)
+                    print("Nota: este ejemplo no guarda datos en la base de datos.")
 
-        elif opcion == "1":
-            nombre = input("Nombre del departamento: ").strip()
-            departamento = gestion_departamentos.crear_departamento(nombre)
-            if departamento is False:
-                print("No se pudo crear: nombre vacio o ya existente.")
-            else:
-                print("Departamento creado:", departamento._nombre)
-                print("Nota: este ejemplo no guarda datos en la base de datos.")
+                elif opcion == "2":
+                    nombre = leer_texto("Nombre a buscar: ", campo="Nombre", maximo=100)
+                    departamento = gestion_departamentos.buscar_departamento(nombre)
+                    if departamento is False:
+                        raise ErrorFormulario("Departamento no encontrado.")
+                    print("Departamento encontrado:", departamento._nombre)
 
-        elif opcion == "2":
-            nombre = input("Nombre a buscar: ").strip()
-            departamento = gestion_departamentos.buscar_departamento(nombre)
-            if departamento is False:
-                print("Departamento no encontrado.")
-            else:
-                print("Departamento encontrado:", departamento._nombre)
+                elif opcion == "3":
+                    nombre = leer_texto("Nombre actual del departamento: ", campo="Nombre", maximo=100)
+                    departamento = gestion_departamentos.buscar_departamento(nombre)
+                    if departamento is False:
+                        raise ErrorFormulario("Departamento no encontrado.")
+                    nuevo_nombre = leer_texto("Nuevo nombre: ", campo="Nombre", maximo=100)
+                    if not gestion_departamentos.editar_departamento(departamento, nuevo_nombre):
+                        raise ErrorFormulario("El nuevo nombre no es valido o ya existe.")
+                    print("Departamento actualizado:", departamento._nombre)
 
-        elif opcion == "3":
-            nombre = input("Nombre actual del departamento: ").strip()
-            departamento = gestion_departamentos.buscar_departamento(nombre)
-            if departamento is False:
-                print("Departamento no encontrado.")
-                input("\nPresione Enter para continuar...")
-                continue
+                elif opcion == "4":
+                    nombre = leer_texto("Nombre del departamento a eliminar: ", campo="Nombre", maximo=100)
+                    departamento = gestion_departamentos.buscar_departamento(nombre)
+                    if departamento is False:
+                        raise ErrorFormulario("Departamento no encontrado.")
+                    if leer_confirmacion("Confirmar eliminacion (s/n): ") == "s":
+                        if not gestion_departamentos.eliminar_departamento(departamento):
+                            raise ErrorFormulario("No se puede eliminar un departamento con empleados o proyectos.")
+                        print("Departamento eliminado.")
+                    else:
+                        print("Eliminacion cancelada.")
 
-            nuevo_nombre = input("Nuevo nombre: ").strip()
-            if gestion_departamentos.editar_departamento(departamento, nuevo_nombre):
-                print("Departamento actualizado:", departamento._nombre)
-            else:
-                print("No se pudo actualizar: nombre invalido o repetido.")
-
-        elif opcion == "4":
-            nombre = input("Nombre del departamento a eliminar: ").strip()
-            departamento = gestion_departamentos.buscar_departamento(nombre)
-            if departamento is False:
-                print("Departamento no encontrado.")
-                input("\nPresione Enter para continuar...")
-                continue
-
-            confirmar = input("Confirmar eliminacion (s/n): ").strip().lower()
-            if confirmar != "s":
-                print("Eliminacion cancelada.")
-                input("\nPresione Enter para continuar...")
-                continue
-
-            if gestion_departamentos.eliminar_departamento(departamento):
-                print("Departamento eliminado.")
-            else:
-                print("No se puede eliminar un departamento con empleados o proyectos.")
+            except Exception as error:
+                explicar_error(error, "procesar el departamento de demostracion")
+                hubo_error = True
+                if preguntar_reintento():
+                    reintento = opcion
 
         elif opcion == "5":
             if not gestion_departamentos._departamentos:
@@ -74,7 +78,9 @@ def menu_dominio_gestionDepartamento(gestion_departamentos):
             else:
                 for departamento in gestion_departamentos._departamentos:
                     print("-", departamento._nombre)
-
         else:
             print("Opcion no valida.")
+
+        if reintento is not None or hubo_error:
+            continue
         input("\nPresione Enter para continuar...")
