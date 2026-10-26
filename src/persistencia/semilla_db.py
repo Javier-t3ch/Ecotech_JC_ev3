@@ -58,9 +58,51 @@ REGISTROS_DEMO = [
 ]
 
 
+
+DEPARTAMENTO_EMPLEADOS_DEMO = {
+    "Recursos Humanos": [
+        "ana.gonzalez@empresa.cl",
+        "fernanda.navarro@empresa.cl",
+        "javier.silva@empresa.cl",
+        "constanza.medina@empresa.cl",
+    ],
+    "Finanzas": [
+        "carlos.munoz@empresa.cl",
+        "camila.rojas@empresa.cl",
+        "daniela.morales@empresa.cl",
+    ],
+    "Marketing": [
+        "maria.lopez@empresa.cl",
+        "diego.fernandez@empresa.cl",
+        "isidora.vega@empresa.cl",
+        "benjamin.contreras@empresa.cl",
+    ],
+    "Tecnología": [
+        "pedro.ramirez@empresa.cl",
+        "valentina.castro@empresa.cl",
+        "felipe.ortiz@empresa.cl",
+        "sebastian.flores@empresa.cl",
+        "nicolas.aguilera@empresa.cl",
+        "tomas.reyes@empresa.cl",
+    ],
+    "Ventas": [
+        "sofia.torres@empresa.cl",
+        "matias.herrera@empresa.cl",
+        "javiera.soto@empresa.cl",
+    ],
+}
+
+DEPARTAMENTO_PROYECTOS_DEMO = {
+    "Recursos Humanos": ["Modernización RRHH"],
+    "Finanzas": ["Control Financiero"],
+    "Marketing": ["Campaña EcoTech Verde"],
+    "Tecnología": ["Portal EcoTech"],
+    "Ventas": ["Gestión de Clientes"],
+}
+
 TABLAS = (
     "departamento", "empleado", "proyecto", "registro_tiempo",
-    "proyecto_empleado",  
+    "proyecto_empleado", "departamento_empleado", "departamento_proyecto",
 )
 
 
@@ -119,6 +161,41 @@ def cargar_proyectos():
     return {nombre: encontrados[nombre.casefold()] for nombre, _, _ in PROYECTOS_DEMO}
 
 
+def cargar_relaciones_departamento(departamentos, empleados, proyectos):
+    """Completa las dos tablas puente usando los DAO existentes.
+
+    Compara los identificadores reales antes de insertar. Así es seguro
+    ejecutar esta función varias veces sobre la misma base de datos.
+    """
+    for nombre_departamento, correos in DEPARTAMENTO_EMPLEADOS_DEMO.items():
+        departamento = departamentos[nombre_departamento]
+        ids_existentes = {empleado._id for empleado in departamento._empleados}
+        for correo in correos:
+            empleado = empleados[correo]
+            if empleado._id in ids_existentes:
+                continue
+            if not DepartamentoDAO.agregar_empleado(departamento, empleado):
+                raise ValueError(
+                    f"No se pudo vincular {correo} con {nombre_departamento}"
+                )
+            ids_existentes.add(empleado._id)
+            print(f"Departamento-empleado creado: {nombre_departamento} -> {correo}")
+
+    for nombre_departamento, nombres_proyecto in DEPARTAMENTO_PROYECTOS_DEMO.items():
+        departamento = departamentos[nombre_departamento]
+        ids_existentes = {proyecto._id_proyecto for proyecto in departamento._proyectos}
+        for nombre_proyecto in nombres_proyecto:
+            proyecto = proyectos[nombre_proyecto]
+            if proyecto._id_proyecto in ids_existentes:
+                continue
+            if not DepartamentoDAO.agregar_proyecto(departamento, proyecto):
+                raise ValueError(
+                    f"No se pudo vincular {nombre_proyecto} con {nombre_departamento}"
+                )
+            ids_existentes.add(proyecto._id_proyecto)
+            print(f"Departamento-proyecto creado: {nombre_departamento} -> {nombre_proyecto}")
+
+
 def asignar_empleados_para_registros(empleados, proyectos):
     for correo, nombre_proyecto, _, _, _ in REGISTROS_DEMO:
         empleado = empleados[correo]
@@ -164,9 +241,10 @@ def cargar_registros_tiempo(empleados, proyectos):
 def ejecutar_semilla():
     anteriores = contar_registros()
     print("\n=== INICIO DE SEMILLA ECOTECH ===")
-    cargar_departamentos()
+    departamentos = cargar_departamentos()
     empleados = cargar_empleados()
     proyectos = cargar_proyectos()
+    cargar_relaciones_departamento(departamentos, empleados, proyectos)
     asignar_empleados_para_registros(empleados, proyectos)
     cargar_registros_tiempo(empleados, proyectos)
 
