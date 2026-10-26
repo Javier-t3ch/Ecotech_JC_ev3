@@ -1,7 +1,10 @@
 import requests
 import math
 import requests
+from menu_usuario import solicitar_login, menu_privado
 
+
+"""""
 URL_DOLAR = "https://mindicador.cl/api/dolar"
 
 
@@ -83,5 +86,21 @@ def main():
         print(f"No se pudo usar el indicador: {error}")
 
 
+if __name__ == "__main__":
+    main()
+""""
+
+def main():
+    while True:
+        usuario_actual = solicitar_login()
+        if usuario_actual is None:
+            if input("Enter para reintentar o 0 para salir: ") == "0":
+                return
+            continue
+        opcion = menu_privado(usuario_actual)
+        usuario_actual = None # Terminar el acceso de esta sesión.
+        if opcion == "0":
+            return
+        print("Sesión cerrada. Ingrese nuevamente.")
 if __name__ == "__main__":
     main()
