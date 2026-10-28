@@ -1,74 +1,62 @@
-from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_entero
-from complementos.complementos import limpiar_pantalla
 from getpass import getpass
 
-from menus.menu_dominio_usuario import buscar_usuario
+from complementos.complementos import limpiar_pantalla
+from dominio.usuario import Usuario
+from menus.menu_usuario import pedir_dato
+from menus.validaciones import ErrorFormulario, explicar_error, leer_entero, leer_texto, preguntar_reintento
+from persistencia.usuario_dao import UsuarioDAO
+from servicios.autenticacion import autenticar
 
 
-def menu_dominio_gestionPermisos(usuarios, gestion_permisos):
+def menu_dominio_gestionPermisos(gestion_permisos):
     reintento = None
     while True:
-        hubo_error = False
-        if reintento is None:
+        opcion = reintento
+        reintento = None
+        if opcion is None:
             limpiar_pantalla()
-            print("\n===== DOMINIO GESTION PERMISOS (DEMOSTRACION) =====")
-            print("1. Ver usuarios y permisos")
-            print("2. Otorgar permiso")
-            print("0. Volver al menu principal")
+            print("\n===== GESTIÓN DE PERMISOS (DEMOSTRACIÓN) =====")
+            print("1. Ver cuentas y permisos de prueba")
+            print("2. Otorgar permiso de prueba")
+            print("0. Volver al menú principal")
+            opcion = input("Seleccione una opción: ").strip()
+        limpiar_pantalla()
 
-            opcion = input("Seleccione una opcion: ").strip()
-            limpiar_pantalla()
-
-        else:
-            opcion = reintento
-            reintento = None
-            limpiar_pantalla()
         if opcion == "0":
             return
-
-        elif opcion == "1":
-            if not usuarios:
-                print("No hay usuarios. Cree uno desde el menu Usuario.")
-            else:
-                for usuario in usuarios:
-                    print(
-                        "ID:", usuario._id_usuario,
-                        "| Usuario:", usuario._nombre,
-                        "| Permisos:", ", ".join(usuario._permisos) or "Sin permisos"
-                    )
-
-        elif opcion == "2":
-            try:
-                if not usuarios:
-                    raise ErrorFormulario("Primero debes crear un usuario desde el menu Usuario.")
-                id_encargado = leer_entero("ID del usuario encargado: ")
-                encargado = buscar_usuario(usuarios, id_encargado)
+        try:
+            if opcion == "1":
+                cuentas = UsuarioDAO.listar()
+                if not cuentas:
+                    print("No hay cuentas. Registre alguna en el menú Usuario.")
+                for cuenta in cuentas:
+                    permisos = gestion_permisos.listar_permisos(cuenta["id"])
+                    print(f"ID: {cuenta['id']} | Usuario: {cuenta['nombre_usuario']} | "
+                        f"Permisos: {', '.join(permisos) or 'Sin permisos'}")
+            elif opcion == "2":
+                nombre = pedir_dato("Usuario encargado: ", Usuario.normalizar_usuario, leer=lambda mensaje: input(mensaje))
+                clave = getpass("Contraseña del encargado: ")
+                encargado = autenticar(nombre, clave)
                 if encargado is None:
-                    raise ErrorFormulario("Encargado no encontrado.")
+                    raise ErrorFormulario("No se pudo comprobar la cuenta encargada.")
+                if encargado["nombre_usuario"] != "admin":
+                    raise ErrorFormulario("Solo la cuenta inicial admin puede otorgar permisos de prueba.")
 
-                contrasenia = getpass("Contrasena del encargado: ")
-                if not encargado.autenticar(contrasenia):
-                    raise ErrorFormulario("Autenticacion incorrecta.")
-
-                id_usuario = leer_entero("ID del usuario que recibira el permiso: ")
-                usuario = buscar_usuario(usuarios, id_usuario)
+                id_usuario = leer_entero("ID del usuario destinatario: ")
+                usuario = UsuarioDAO.buscar_por_id(id_usuario)
                 if usuario is None:
                     raise ErrorFormulario("Usuario destinatario no encontrado.")
-
-                permiso = leer_texto("Nombre del permiso: ", campo="El permiso")
-                if gestion_permisos.otorgar_permiso(encargado, usuario, permiso):
-                    print("Permiso otorgado correctamente.")
-                else:
-                    raise ErrorFormulario("No se pudo otorgar: encargado sin autorizacion, permiso vacio o repetido.")
-
-            except Exception as error:
-                explicar_error(error, 'otorgar el permiso')
-                hubo_error = True
-                if preguntar_reintento():
-                    reintento = opcion
-
-        else:
-            print("Opcion no valida.")
-        if reintento is not None or hubo_error:
+                permiso = leer_texto("Permiso de prueba: ", campo="El permiso", maximo=80)
+                if not gestion_permisos.otorgar_permiso(encargado, usuario, permiso):
+                    raise ErrorFormulario("El permiso ya existe o los datos no son válidos.")
+                print("Permiso de prueba asignado correctamente.")
+            else:
+                print("Opción no válida.")
+                continue
+        except Exception as error:
+            explicar_error(error, "gestionar los permisos")
+            if preguntar_reintento():
+                reintento = opcion
             continue
+        print("Nota: estos permisos solo viven en memoria y no protegen funciones de EcoTech.")
         input("\nPresione Enter para continuar...")

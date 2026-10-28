@@ -1,3 +1,4 @@
 PyMySQL==1.2.3
 python-dotenv==1.2.3
-requests==2.34.2
+requests
+bcrypt

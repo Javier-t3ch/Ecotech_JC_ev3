@@ -18,6 +18,14 @@ def crear_tablas():
                     salario REAL NOT NULL,
                     cargo TEXT NOT NULL
                 )""",
+                """CREATE TABLE IF NOT EXISTS usuario (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre_usuario TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    empleado_id INTEGER NOT NULL UNIQUE,
+                    FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                        ON DELETE RESTRICT
+                )""",
                 """CREATE TABLE IF NOT EXISTS departamento (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT NOT NULL,
@@ -72,6 +80,14 @@ def crear_tablas():
                     fecha_contrato DATE NOT NULL,
                     salario DECIMAL(12, 2) NOT NULL,
                     cargo VARCHAR(100) NOT NULL
+                )""",
+                """CREATE TABLE IF NOT EXISTS usuario (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    nombre_usuario VARCHAR(40) NOT NULL UNIQUE,
+                    password_hash VARCHAR(255) NOT NULL,
+                    empleado_id INT NOT NULL UNIQUE,
+                    FOREIGN KEY (empleado_id) REFERENCES empleado(id)
+                        ON DELETE RESTRICT
                 )""",
                 """CREATE TABLE IF NOT EXISTS departamento (
                     id INT PRIMARY KEY AUTO_INCREMENT,

@@ -1,142 +1,66 @@
-from menus.validaciones import (
-    ErrorFormulario, explicar_error, preguntar_reintento,
-    leer_texto, leer_correo, leer_entero,
-    leer_contrasena
-)
-from complementos.complementos import limpiar_pantalla
+
 from getpass import getpass
 
+from complementos.complementos import limpiar_pantalla
 from dominio.usuario import Usuario
-from persistencia.empleado_dao import EmpleadoDAO
+from menus.menu_usuario import pedir_dato, solicitar_registro
+from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento
+from persistencia.usuario_dao import UsuarioDAO
+from servicios.autenticacion import autenticar, cambiar_contrasena
 
 
-def buscar_usuario(usuarios, id_usuario):
-    for usuario in usuarios:
-        if usuario._id_usuario == id_usuario:
-            return usuario
-    return None
-
-
-def menu_dominio_usuario(usuarios):
+def menu_dominio_usuario():
     reintento = None
     while True:
-        hubo_error = False
-        if reintento is None:
+        opcion = reintento
+        reintento = None
+        if opcion is None:
             limpiar_pantalla()
-            print("\n===== DOMINIO USUARIO (DEMOSTRACION) =====")
-            print("1. Crear usuario para un empleado")
-            print("2. Autenticar usuario")
-            print("3. Cambiar contrasena")
-            print("4. Listar usuarios de la demostracion")
-            print("0. Volver al menu principal")
+            print("\n===== CUENTAS DE USUARIO (BASE DE DATOS) =====")
+            print("1. Registrar cuenta para un empleado")
+            print("2. Comprobar credenciales de un usuario")
+            print("3. Cambiar contraseña")
+            print("4. Listar cuentas registradas")
+            print("0. Volver al menú principal")
+            opcion = input("Seleccione una opción: ").strip()
+        limpiar_pantalla()
 
-            opcion = input("Seleccione una opcion: ").strip()
-            limpiar_pantalla()
-
-        else:
-            opcion = reintento
-            reintento = None
-            limpiar_pantalla()
         if opcion == "0":
             return
-
-        elif opcion == "1":
-            try:
-                id_empleado = leer_entero("ID del empleado existente: ")
-                empleado = EmpleadoDAO.buscar_por_id(id_empleado)
-                if empleado is None:
-                    raise ErrorFormulario("Empleado no encontrado. Registrelo primero en el CRUD.")
-
-                repetido = False
-                for actual in usuarios:
-                    if actual._empleado._id == id_empleado:
-                        repetido = True
-                if repetido:
-                    raise ErrorFormulario("Este empleado ya tiene un usuario en la demostracion.")
-
-                nombre = leer_texto("Nombre de usuario: ", campo="Nombre", maximo=100)
-                mail = leer_correo(
-                    "Correo del usuario: ",
-                    ocupado=lambda c: any(u._mail.casefold() == c.casefold() for u in usuarios)
-                )
-                if nombre == "" or "@" not in mail or "." not in mail:
-                    raise ErrorFormulario("Ingrese un nombre y un correo validos.")
-
-                contrasenia = leer_contrasena("Contrasena (minimo 8 caracteres): ")
-                if len(contrasenia) < 8:
-                    raise ErrorFormulario("La contrasena debe tener al menos 8 caracteres.")
-
-                existe_mail = False
-                for actual in usuarios:
-                    if actual._mail.lower() == mail.lower():
-                        existe_mail = True
-                if existe_mail:
-                    raise ErrorFormulario("Ya existe un usuario con ese correo.")
-
-                usuario = Usuario(
-                    nombre=nombre,
-                    mail=mail,
-                    contrasenia=contrasenia,
-                    empleado=empleado,
-                    id_usuario=len(usuarios) + 1
-                )
-
-                if len(usuarios) == 0:
-                    usuario._permisos.append("administrar_permisos")
-                    print("Primer usuario: administrador de demostracion.")
-
-                usuarios.append(usuario)
-                print("Usuario creado. ID:", usuario._id_usuario)
-                print("Nota: se conserva solo mientras el programa este abierto.")
-
-            except Exception as error:
-                explicar_error(error, 'procesar la operacion de usuario')
-                hubo_error = True
-                if preguntar_reintento():
-                    reintento = opcion
-
-        elif opcion in ("2", "3"):
-            try:
-                id_usuario = leer_entero("ID del usuario: ")
-                usuario = buscar_usuario(usuarios, id_usuario)
-                if usuario is None:
-                    raise ErrorFormulario("Usuario no encontrado.")
-
-                contrasenia = getpass("Contrasena actual: ")
-
-                if opcion == "2":
-                    if usuario.autenticar(contrasenia):
-                        print("Autenticacion correcta.")
-                    else:
-                        raise ErrorFormulario("Contrasena incorrecta.")
-
-                elif opcion == "3":
-                    nueva = leer_contrasena("Nueva contrasena (minimo 8 caracteres): ")
-                    if usuario.cambiar_contrasenia(contrasenia, nueva):
-                        print("Contrasena cambiada correctamente.")
-                    else:
-                        raise ErrorFormulario("No se pudo cambiar la contrasena.")
-
-            except Exception as error:
-                explicar_error(error, 'procesar la operacion de usuario')
-                hubo_error = True
-                if preguntar_reintento():
-                    reintento = opcion
-
-        elif opcion == "4":
-            if not usuarios:
-                print("Aun no hay usuarios en esta prueba.")
+        try:
+            if opcion == "1":
+                if solicitar_registro() is None:
+                    raise ErrorFormulario("No fue posible registrar la cuenta.")
+            elif opcion == "2":
+                nombre = input("Usuario: ")
+                clave = getpass("Contraseña: ")
+                if autenticar(nombre, clave) is None:
+                    raise ErrorFormulario("Usuario o contraseña incorrectos.")
+                print("Credenciales correctas. La sesión actual no cambia.")
+            elif opcion == "3":
+                nombre = pedir_dato("Usuario: ", Usuario.normalizar_usuario, leer=lambda mensaje: input(mensaje))
+                actual = getpass("Contraseña actual: ")
+                nueva = pedir_dato("Nueva contraseña (mínimo 6 caracteres): ", Usuario.validar_clave, getpass)
+                while getpass("Repita la nueva contraseña: ") != nueva:
+                    print("Las contraseñas no coinciden. Repita la confirmación.")
+                if not cambiar_contrasena(nombre, actual, nueva):
+                    raise ErrorFormulario("Usuario o contraseña actual incorrectos, o clave sin cambios.")
+                print("Contraseña actualizada y guardada correctamente.")
+            elif opcion == "4":
+                cuentas = UsuarioDAO.listar()
+                if not cuentas:
+                    print("Todavía no hay cuentas registradas.")
+                else:
+                    for cuenta in cuentas:
+                        print(f"ID: {cuenta['id']} | Usuario: {cuenta['nombre_usuario']} | "
+                            f"Empleado: {cuenta['empleado_id']}")
+                print("No se muestran contraseñas ni hashes.")
             else:
-                for usuario in usuarios:
-                    print(
-                        "ID:", usuario._id_usuario,
-                        "| Nombre:", usuario._nombre,
-                        "| Empleado:", usuario._empleado._id,
-                        "| Permisos:", ", ".join(usuario._permisos) or "Sin permisos"
-                    )
-
-        else:
-            print("Opcion no valida.")
-        if reintento is not None or hubo_error:
+                print("Opción no válida.")
+                continue
+        except Exception as error:
+            explicar_error(error, "procesar la cuenta de usuario")
+            if preguntar_reintento():
+                reintento = opcion
             continue
         input("\nPresione Enter para continuar...")
