@@ -7,7 +7,7 @@ from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
 from persistencia.registroTiempo_dao import RegistroTiempoDAO
-
+from complementos.complementos import limpiar_pantalla
 
 EMPLEADOS_DEMO = [
     ('Ana González', 'Av. Providencia 123', 912345678, 'ana.gonzalez@empresa.cl', '2022-03-15', 1200000, 'Analista de Recursos Humanos'),
@@ -162,11 +162,7 @@ def cargar_proyectos():
 
 
 def cargar_relaciones_departamento(departamentos, empleados, proyectos):
-    """Completa las dos tablas puente usando los DAO existentes.
 
-    Compara los identificadores reales antes de insertar. Así es seguro
-    ejecutar esta función varias veces sobre la misma base de datos.
-    """
     for nombre_departamento, correos in DEPARTAMENTO_EMPLEADOS_DEMO.items():
         departamento = departamentos[nombre_departamento]
         ids_existentes = {empleado._id for empleado in departamento._empleados}
@@ -255,5 +251,6 @@ def ejecutar_semilla():
         antes, despues = anteriores[tabla], actuales[tabla]
         print(f"{tabla:<23} {antes:>7} {despues:>8} {despues - antes:>8}")
     print("Semilla finalizada correctamente.\n")
+    limpiar_pantalla()
     return actuales
 

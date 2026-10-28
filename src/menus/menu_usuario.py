@@ -6,7 +6,6 @@ from menus.validaciones import preguntar_reintento
 
 
 def pedir_dato(mensaje, validador, leer=input):
-    """Repite únicamente el campo que no supera la validación."""
     while True:
         try:
             return validador(leer(mensaje))
@@ -29,16 +28,33 @@ def solicitar_registro():
     empleado_id = pedir_dato("ID del empleado: ", _validar_id)
     nombre = pedir_dato("Nuevo usuario: ", Usuario.normalizar_usuario)
     clave = pedir_dato("Contraseña: ", Usuario.validar_clave, getpass)
-    while getpass("Repita la contraseña: ") != clave:
+
+    while True:
+        confirmacion = getpass(
+            "Repita la contraseña (o escriba SALIR para cancelar): "
+        )
+
+        if confirmacion.upper() == "SALIR":
+            print("Registro cancelado.")
+            return None
+
+        if confirmacion == clave:
+            break
+
         print("Las contraseñas no coinciden. Repita la confirmación.")
+
     try:
         cuenta_id = registrar_usuario(empleado_id, nombre, clave)
     except (TypeError, ValueError):
-        print("No se pudo registrar la cuenta: compruebe que el empleado exista y no tenga otra cuenta.")
+        print(
+            "No se pudo registrar la cuenta: compruebe que el empleado "
+            "exista y no tenga otra cuenta."
+        )
         return None
     except Exception:
         print("No se pudo guardar la cuenta. Revise los datos y la conexión.")
         return None
+
     print(f"Cuenta creada correctamente. ID: {cuenta_id}")
     return cuenta_id
 
@@ -67,7 +83,6 @@ def mostrar_perfil(usuario_actual):
 
 
 def menu_privado(usuario_actual, menu_modulos=None):
-    """No abre ninguna opción si no hay sesión; 9 cierra sesión y 0 sale."""
     if usuario_actual is None:
         print("Debe iniciar sesión.")
         return "9"

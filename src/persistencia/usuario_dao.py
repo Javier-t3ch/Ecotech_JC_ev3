@@ -72,7 +72,6 @@ class UsuarioDAO:
 
     @staticmethod
     def listar():
-        """No entrega hashes al menú que lista cuentas."""
         conexion = abrir_conexion()
         try:
             cursor = conexion.cursor()

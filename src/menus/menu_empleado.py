@@ -9,7 +9,6 @@ from complementos.complementos import limpiar_pantalla
 
 
 def correo_ya_registrado(correo, excluir_id=None):
-    """Detecta correos repetidos antes de intentar guardar al empleado."""
     return any(
         e._correo.casefold() == correo.casefold() and e._id != excluir_id
         for e in EmpleadoDAO.listar()

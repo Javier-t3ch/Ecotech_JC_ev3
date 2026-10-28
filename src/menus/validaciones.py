@@ -1,8 +1,4 @@
-"""Validaciones de entradas para los menús de EcoTech.
 
-Cada función vuelve a solicitar *el mismo campo* si el dato es incorrecto.
-En una edición, obligatorio=False permite dejar Enter para conservar el valor.
-"""
 from datetime import date
 from getpass import getpass
 import math
@@ -123,19 +119,27 @@ def leer_contrasena(mensaje="Contrasena (minimo 8 caracteres): "):
 
 
 class ErrorFormulario(ValueError):
-    """Situacion de negocio que puede explicarse al usuario sin detalles tecnicos."""
+    pass
 
 
 def explicar_error(error, operacion):
-    """No muestra SQL, rutas, excepciones ni datos internos en el menu."""
     if isinstance(error, ErrorFormulario):
         print(f"No se pudo completar el formulario: {error}")
+
     elif isinstance(error, ValueError):
-        print(f"No se pudo {operacion}. Revisa que los datos ingresados sean validos.")
+        print(
+            f"No se pudo {operacion}. "
+            "Revisa que los datos ingresados sean válidos."
+        )
+
     else:
-        print(f"No se pudo {operacion}. Comprueba los datos y la conexion e intenta nuevamente.")
+        print(
+            f"No se pudo {operacion}. "
+            "Comprueba los datos y la conexión e intenta nuevamente."
+        )
 
 
 def preguntar_reintento():
-    """Una respuesta afirmativa repite la misma opcion, no todo el menu."""
-    return leer_confirmacion("¿Deseas intentar nuevamente el formulario? (s/n): ") == "s"
+    return leer_confirmacion(
+        "¿Deseas intentar nuevamente el formulario? (s/n): "
+    ) == "s"
