@@ -1,5 +1,6 @@
 from dominio.departamento import Departamento
 from dominio.empleado import Empleado
+from dominio.cargo import CARGO_EMPLEADO, CARGO_RECURSOS_HUMANOS
 from dominio.proyecto import Proyecto
 from dominio.registroTiempo import RegistroTiempo
 from persistencia.conexion import abrir_conexion
@@ -10,26 +11,26 @@ from persistencia.registroTiempo_dao import RegistroTiempoDAO
 from complementos.complementos import limpiar_pantalla
 
 EMPLEADOS_DEMO = [
-    ('Ana González', 'Av. Providencia 123', 912345678, 'ana.gonzalez@empresa.cl', '2022-03-15', 1200000, 'Analista de Recursos Humanos'),
-    ('Carlos Muñoz', 'Av. Las Condes 456', 923456789, 'carlos.munoz@empresa.cl', '2021-07-10', 1500000, 'Contador'),
-    ('María López', 'Calle Huérfanos 789', 934567890, 'maria.lopez@empresa.cl', '2023-01-20', 1300000, 'Especialista en Marketing'),
-    ('Pedro Ramírez', 'Av. Apoquindo 321', 945678901, 'pedro.ramirez@empresa.cl', '2020-11-05', 2000000, 'Desarrollador de Software'),
-    ('Sofía Torres', 'Calle Manuel Montt 654', 956789012, 'sofia.torres@empresa.cl', '2024-06-01', 1100000, 'Ejecutiva de Ventas'),
-    ('Diego Fernández', 'Av. Grecia 789', 967890123, 'diego.fernandez@empresa.cl', '2022-08-12', 1400000, 'Diseñador Gráfico'),
-    ('Camila Rojas', 'Calle San Diego 234', 978901234, 'camila.rojas@empresa.cl', '2021-04-18', 1600000, 'Jefa de Finanzas'),
-    ('Javier Silva', 'Av. Macul 567', 989012345, 'javier.silva@empresa.cl', '2023-09-25', 1250000, 'Asistente Administrativo'),
-    ('Valentina Castro', 'Calle Irarrázaval 890', 991234567, 'valentina.castro@empresa.cl', '2020-02-14', 1800000, 'Ingeniera de Software'),
-    ('Matías Herrera', 'Av. Vicuña Mackenna 111', 912345670, 'matias.herrera@empresa.cl', '2024-02-05', 1150000, 'Ejecutivo Comercial'),
-    ('Daniela Morales', 'Calle Moneda 222', 923456780, 'daniela.morales@empresa.cl', '2022-12-01', 1350000, 'Analista Contable'),
-    ('Felipe Ortiz', 'Av. Independencia 333', 934567801, 'felipe.ortiz@empresa.cl', '2021-06-20', 1700000, 'Administrador de Sistemas'),
-    ('Isidora Vega', 'Calle Bellavista 444', 945678012, 'isidora.vega@empresa.cl', '2023-05-10', 1280000, 'Community Manager'),
-    ('Tomás Reyes', 'Av. Santa Rosa 555', 956789123, 'tomas.reyes@empresa.cl', '2020-09-08', 1900000, 'Ingeniero Civil'),
-    ('Fernanda Navarro', 'Calle Portugal 666', 967890234, 'fernanda.navarro@empresa.cl', '2024-01-15', 1180000, 'Reclutadora'),
-    ('Sebastián Flores', 'Av. Departamental 777', 978901245, 'sebastian.flores@empresa.cl', '2022-07-22', 1450000, 'Analista de Datos'),
-    ('Constanza Medina', 'Calle Carmen 888', 989012356, 'constanza.medina@empresa.cl', '2021-10-30', 1550000, 'Coordinadora de Proyectos'),
-    ('Nicolás Aguilera', 'Av. Tobalaba 999', 991234568, 'nicolas.aguilera@empresa.cl', '2023-11-12', 1320000, 'Técnico Informático'),
-    ('Javiera Soto', 'Calle Eleuterio Ramírez 101', 912345671, 'javiera.soto@empresa.cl', '2020-05-19', 1750000, 'Supervisora de Ventas'),
-    ('Benjamín Contreras', 'Av. Matta 202', 923456781, 'benjamin.contreras@empresa.cl', '2024-08-03', 1220000, 'Asistente de Marketing'),
+    ('Ana González', 'Av. Providencia 123', 912345678, 'ana.gonzalez@empresa.cl', '2022-03-15', 1200000, CARGO_RECURSOS_HUMANOS),
+    ('Carlos Muñoz', 'Av. Las Condes 456', 923456789, 'carlos.munoz@empresa.cl', '2021-07-10', 1500000, CARGO_EMPLEADO),
+    ('María López', 'Calle Huérfanos 789', 934567890, 'maria.lopez@empresa.cl', '2023-01-20', 1300000, CARGO_EMPLEADO),
+    ('Pedro Ramírez', 'Av. Apoquindo 321', 945678901, 'pedro.ramirez@empresa.cl', '2020-11-05', 2000000, CARGO_EMPLEADO),
+    ('Sofía Torres', 'Calle Manuel Montt 654', 956789012, 'sofia.torres@empresa.cl', '2024-06-01', 1100000, CARGO_EMPLEADO),
+    ('Diego Fernández', 'Av. Grecia 789', 967890123, 'diego.fernandez@empresa.cl', '2022-08-12', 1400000, CARGO_EMPLEADO),
+    ('Camila Rojas', 'Calle San Diego 234', 978901234, 'camila.rojas@empresa.cl', '2021-04-18', 1600000, CARGO_EMPLEADO),
+    ('Javier Silva', 'Av. Macul 567', 989012345, 'javier.silva@empresa.cl', '2023-09-25', 1250000, CARGO_EMPLEADO),
+    ('Valentina Castro', 'Calle Irarrázaval 890', 991234567, 'valentina.castro@empresa.cl', '2020-02-14', 1800000, CARGO_EMPLEADO),
+    ('Matías Herrera', 'Av. Vicuña Mackenna 111', 912345670, 'matias.herrera@empresa.cl', '2024-02-05', 1150000, CARGO_EMPLEADO),
+    ('Daniela Morales', 'Calle Moneda 222', 923456780, 'daniela.morales@empresa.cl', '2022-12-01', 1350000, CARGO_EMPLEADO),
+    ('Felipe Ortiz', 'Av. Independencia 333', 934567801, 'felipe.ortiz@empresa.cl', '2021-06-20', 1700000, CARGO_EMPLEADO),
+    ('Isidora Vega', 'Calle Bellavista 444', 945678012, 'isidora.vega@empresa.cl', '2023-05-10', 1280000, CARGO_EMPLEADO),
+    ('Tomás Reyes', 'Av. Santa Rosa 555', 956789123, 'tomas.reyes@empresa.cl', '2020-09-08', 1900000, CARGO_EMPLEADO),
+    ('Fernanda Navarro', 'Calle Portugal 666', 967890234, 'fernanda.navarro@empresa.cl', '2024-01-15', 1180000, CARGO_RECURSOS_HUMANOS),
+    ('Sebastián Flores', 'Av. Departamental 777', 978901245, 'sebastian.flores@empresa.cl', '2022-07-22', 1450000, CARGO_EMPLEADO),
+    ('Constanza Medina', 'Calle Carmen 888', 989012356, 'constanza.medina@empresa.cl', '2021-10-30', 1550000, CARGO_EMPLEADO),
+    ('Nicolás Aguilera', 'Av. Tobalaba 999', 991234568, 'nicolas.aguilera@empresa.cl', '2023-11-12', 1320000, CARGO_EMPLEADO),
+    ('Javiera Soto', 'Calle Eleuterio Ramírez 101', 912345671, 'javiera.soto@empresa.cl', '2020-05-19', 1750000, CARGO_EMPLEADO),
+    ('Benjamín Contreras', 'Av. Matta 202', 923456781, 'benjamin.contreras@empresa.cl', '2024-08-03', 1220000, CARGO_EMPLEADO),
 ]
 
 DEPARTAMENTOS_DEMO = [
@@ -135,12 +136,12 @@ def cargar_departamentos():
 
 def cargar_empleados():
     encontrados = {e._correo.strip().casefold(): e for e in EmpleadoDAO.listar()}
-    for nombre, direccion, numero, correo, fecha, salario, cargo in EMPLEADOS_DEMO:
+    for nombre, direccion, numero, correo, fecha, salario, id_cargo in EMPLEADOS_DEMO:
         clave = correo.strip().casefold()
         if clave in encontrados:
             print(f"Ya existe empleado: {correo}")
             continue
-        nuevo = Empleado(nombre, direccion, str(numero), correo, fecha, salario, cargo)
+        nuevo = Empleado(nombre, direccion, str(numero), correo, fecha, salario, id_cargo)
         EmpleadoDAO.insertar(nuevo)
         encontrados[clave] = nuevo
         print(f"Empleado creado: {correo}")
@@ -253,4 +254,3 @@ def ejecutar_semilla():
     print("Semilla finalizada correctamente.\n")
     limpiar_pantalla()
     return actuales
-

@@ -1,62 +1,65 @@
-from getpass import getpass
-
-from complementos.complementos import limpiar_pantalla
-from dominio.usuario import Usuario
-from menus.menu_usuario import pedir_dato
-from menus.validaciones import ErrorFormulario, explicar_error, leer_entero, leer_texto, preguntar_reintento
+from complementos.complementos import limpiar_pantalla, pausar_y_limpiar
+from validaciones import (FormularioCancelado, avisar_cancelacion, aviso_cancelacion,
+                                leer_id_existente, leer_confirmacion, explicar_error)
 from persistencia.usuario_dao import UsuarioDAO
-from servicios.autenticacion import autenticar
+from servicios.autorizacion import exigir_admin
 
 
-def menu_dominio_gestionPermisos(gestion_permisos):
-    reintento = None
+def menu_dominio_gestionPermisos(gestion_permisos, usuario_actual=None):
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
+
     while True:
-        opcion = reintento
-        reintento = None
-        if opcion is None:
-            limpiar_pantalla()
-            print("\n===== GESTIÓN DE PERMISOS (DEMOSTRACIÓN) =====")
-            print("1. Ver cuentas y permisos de prueba")
-            print("2. Otorgar permiso de prueba")
-            print("0. Volver al menú principal")
-            opcion = input("Seleccione una opción: ").strip()
         limpiar_pantalla()
-
+        print("\n===== GESTIÓN DE PERMISOS =====")
+        print("1. Listar cuentas y roles")
+        print("2. Otorgar rol admin a una cuenta")
+        print("0. Volver a Módulos EcoTech")
+        opcion = input("Seleccione una opción: ").strip()
         if opcion == "0":
             return
+        limpiar_pantalla()
         try:
+            exigir_admin(usuario_actual)
             if opcion == "1":
-                cuentas = UsuarioDAO.listar()
+                cuentas = gestion_permisos.listar_cuentas(usuario_actual)
                 if not cuentas:
-                    print("No hay cuentas. Registre alguna en el menú Usuario.")
+                    print("No hay cuentas registradas.")
                 for cuenta in cuentas:
-                    permisos = gestion_permisos.listar_permisos(cuenta["id"])
                     print(f"ID: {cuenta['id']} | Usuario: {cuenta['nombre_usuario']} | "
-                        f"Permisos: {', '.join(permisos) or 'Sin permisos'}")
+                        f"Empleado: {cuenta['empleado_id']} | Rol: {cuenta['rol']}")
             elif opcion == "2":
-                nombre = pedir_dato("Usuario encargado: ", Usuario.normalizar_usuario, leer=lambda mensaje: input(mensaje))
-                clave = getpass("Contraseña del encargado: ")
-                encargado = autenticar(nombre, clave)
-                if encargado is None:
-                    raise ErrorFormulario("No se pudo comprobar la cuenta encargada.")
-                if encargado["nombre_usuario"] != "admin":
-                    raise ErrorFormulario("Solo la cuenta inicial admin puede otorgar permisos de prueba.")
-
-                id_usuario = leer_entero("ID del usuario destinatario: ")
-                usuario = UsuarioDAO.buscar_por_id(id_usuario)
-                if usuario is None:
-                    raise ErrorFormulario("Usuario destinatario no encontrado.")
-                permiso = leer_texto("Permiso de prueba: ", campo="El permiso", maximo=80)
-                if not gestion_permisos.otorgar_permiso(encargado, usuario, permiso):
-                    raise ErrorFormulario("El permiso ya existe o los datos no son válidos.")
-                print("Permiso de prueba asignado correctamente.")
+                print("Solo una cuenta administradora puede otorgar este rol.")
+                aviso_cancelacion()
+                id_usuario = leer_id_existente(
+                    "ID de la cuenta (LISTAR para ver cuentas): ",
+                    UsuarioDAO.buscar_por_id, etiqueta="La cuenta",
+                    listar=lambda: gestion_permisos.listar_cuentas(usuario_actual),
+                )
+                cuenta = UsuarioDAO.buscar_por_id(id_usuario)
+                if cuenta.rol == "admin":
+                    print("Esta cuenta ya tiene rol admin.")
+                else:
+                    respuesta = leer_confirmacion(
+                        f"¿Convertir {cuenta.nombre_usuario} en administrador? (s/n): "
+                    )
+                    if respuesta == "s":
+                        if gestion_permisos.otorgar_admin(usuario_actual, id_usuario):
+                            print("Rol admin guardado correctamente en la base de datos.")
+                        else:
+                            print("El rol ya estaba asignado.")
+                    else:
+                        print("No se realizaron cambios.")
             else:
                 print("Opción no válida.")
-                continue
+        except FormularioCancelado:
+            avisar_cancelacion()
+        except PermissionError as error:
+            print(error)
+            return
         except Exception as error:
-            explicar_error(error, "gestionar los permisos")
-            if preguntar_reintento():
-                reintento = opcion
-            continue
-        print("Nota: estos permisos solo viven en memoria y no protegen funciones de EcoTech.")
-        input("\nPresione Enter para continuar...")
+            explicar_error(error, "gestionar permisos")
+        pausar_y_limpiar()

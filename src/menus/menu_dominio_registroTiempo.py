@@ -1,5 +1,6 @@
-from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_fecha, leer_entero
-from complementos.complementos import limpiar_pantalla
+from validaciones import FormularioCancelado, avisar_cancelacion, aviso_cancelacion, leer_id_existente, leer_entrada, leer_secreto
+from validaciones import ErrorFormulario, explicar_error, preguntar_reintento, leer_texto, leer_fecha, leer_entero
+from complementos.complementos import limpiar_pantalla, pausar_y_limpiar
 from dominio.registroTiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
@@ -7,7 +8,13 @@ from persistencia.registroTiempo_dao import RegistroTiempoDAO
 from menus.menu_registroTiempo import main_RegistroTiempo
 
 
-def menu_dominio_registro_tiempo():
+def menu_dominio_registro_tiempo(usuario_actual=None):
+    from servicios.autorizacion import exigir_admin
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
     reintento = None
     while True:
         hubo_error = False
@@ -21,7 +28,8 @@ def menu_dominio_registro_tiempo():
             print("5. Gestionar registros de tiempo (CRUD)")
             print("0. Volver al menu principal")
 
-            opcion = input("Seleccione una opcion: ")
+            aviso_cancelacion()
+            opcion = input("Seleccione una opción: ").strip()
             limpiar_pantalla()
 
         else:
@@ -31,17 +39,21 @@ def menu_dominio_registro_tiempo():
         if opcion == "0":
             return
         if opcion == "5":
-            main_RegistroTiempo()
+            main_RegistroTiempo(usuario_actual)
             continue
 
         if opcion == "1":
             try:
-                id_empleado = leer_entero("ID del empleado: ")
+                id_empleado = leer_id_existente("ID del empleado: ", EmpleadoDAO.buscar_por_id, etiqueta="El empleado", listar=EmpleadoDAO.listar)
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
                     raise ErrorFormulario("Empleado no encontrado.")
 
-                id_proyecto = leer_entero("ID del proyecto: ")
+                id_proyecto = leer_id_existente("ID del proyecto: ", ProyectoDao.buscar_por_id,
+                    etiqueta="El proyecto",
+                    condicion=lambda p: RegistroTiempoDAO.empleado_asignado(empleado._id, p._id_proyecto),
+                    mensaje_condicion="El empleado no está asignado al proyecto. Elija otro ID.",
+                    listar=ProyectoDao.listar)
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if proyecto is None:
                     raise ErrorFormulario("Proyecto no encontrado.")
@@ -49,12 +61,12 @@ def menu_dominio_registro_tiempo():
                 if not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
                     raise ErrorFormulario("El empleado no esta asignado a ese proyecto.")
 
-                horas = leer_entero("Horas trabajadas: ")
+                horas = leer_entero("Horas trabajadas: ", maximo=24)
                 if horas <= 0:
                     raise ErrorFormulario("Las horas deben ser mayores que cero.")
 
                 fecha = leer_fecha("Fecha trabajada (AAAA-MM-DD): ")
-                descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=500)
+                descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=100)
                 if descripcion == "":
                     raise ErrorFormulario("La descripcion no puede quedar vacia.")
 
@@ -71,6 +83,8 @@ def menu_dominio_registro_tiempo():
                 else:
                     raise ErrorFormulario("No se pudo guardar el registro.")
 
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'procesar la operacion de registro de tiempo')
                 hubo_error = True
@@ -102,7 +116,7 @@ def menu_dominio_registro_tiempo():
 
         elif opcion == "3":
             try:
-                id_empleado = leer_entero("ID del empleado: ")
+                id_empleado = leer_id_existente("ID del empleado: ", EmpleadoDAO.buscar_por_id, etiqueta="El empleado", listar=EmpleadoDAO.listar)
                 empleado = EmpleadoDAO.buscar_por_id(id_empleado)
                 if empleado is None:
                     raise ErrorFormulario("Empleado no encontrado.")
@@ -129,6 +143,8 @@ def menu_dominio_registro_tiempo():
                 else:
                     print("Este empleado no tiene registros.")
 
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'procesar la operacion de registro de tiempo')
                 hubo_error = True
@@ -142,7 +158,7 @@ def menu_dominio_registro_tiempo():
 
         elif opcion == "4":
             try:
-                id_proyecto = leer_entero("ID del proyecto: ")
+                id_proyecto = leer_id_existente("ID del proyecto: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto", listar=ProyectoDao.listar)
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if proyecto is None:
                     raise ErrorFormulario("Proyecto no encontrado.")
@@ -171,6 +187,8 @@ def menu_dominio_registro_tiempo():
                 else:
                     print("Este proyecto no tiene registros.")
 
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'procesar la operacion de registro de tiempo')
                 hubo_error = True
@@ -184,6 +202,6 @@ def menu_dominio_registro_tiempo():
 
         else:
             print("Opcion no valida.")
-        if reintento is not None or hubo_error:
+        if reintento is not None:
             continue
-        input("\nPresione Enter para continuar...")
+        pausar_y_limpiar()

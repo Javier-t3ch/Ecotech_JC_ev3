@@ -1,6 +1,10 @@
+from dominio.cargo import validar_id_cargo, nombre_cargo
+from validaciones import validar_texto, validar_correo
+
+
 class Empleado:
 
-    def __init__(self, nombre, direccion, numero, correo, fecha_contrato, salario, cargo, id=None ):
+    def __init__(self, nombre, direccion, numero, correo, fecha_contrato, salario, id_cargo, id=None ):
         if nombre == "":
             raise ValueError("El nombre no puede estar vacio")
 
@@ -16,8 +20,7 @@ class Empleado:
         if salario < 0:
             raise ValueError("El salario no puede ser negativo")
 
-        if cargo == "":
-            raise ValueError("El cargo no puede estar vacio")
+        validar_id_cargo(id_cargo)
 
         self._id = id
         self._nombre = nombre
@@ -26,11 +29,11 @@ class Empleado:
         self._correo = correo
         self._fecha_contrato = fecha_contrato
         self._salario = salario
-        self._cargo = cargo
+        self._id_cargo = id_cargo
         self._registros_tiempo = []
 
     def mostrar_datos(self):
-        return f"{self._id} - {self._nombre} - {self._cargo} - {self._correo} - {self._direccion}"
+        return f"{self._id} - {self._nombre} - {nombre_cargo(self._id_cargo)} (ID {self._id_cargo}) - {self._correo} - {self._direccion}"
 
     def ver_salario(self):
         return self._salario
@@ -48,3 +51,10 @@ class Empleado:
             total_horas += registro_guardado._horas_trabajadas
         return total_horas
 
+    @staticmethod
+    def validar_nombre(nombre):
+        return validar_texto(nombre, tipo="persona", campo="Nombre", maximo=50)
+
+    @staticmethod
+    def validar_correo(correo):
+        return validar_correo(correo)

@@ -8,7 +8,7 @@ class UsuarioDAO:
     def _desde_fila(fila):
         return None if fila is None else Usuario(
             nombre_usuario=fila[1], password_hash=fila[2],
-            empleado_id=int(fila[3]), id=int(fila[0])
+            empleado_id=int(fila[3]), id=int(fila[0]), rol=fila[4]
         )
 
     @staticmethod
@@ -18,9 +18,9 @@ class UsuarioDAO:
             cursor = conexion.cursor()
             marca = marcador_sql()
             cursor.execute(
-                f"INSERT INTO usuario (nombre_usuario, password_hash, empleado_id) "
-                f"VALUES ({marca}, {marca}, {marca})",
-                (usuario.nombre_usuario, usuario.password_hash, usuario.empleado_id),
+                f"INSERT INTO usuario (nombre_usuario, password_hash, empleado_id, rol) "
+                f"VALUES ({marca}, {marca}, {marca}, {marca})",
+                (usuario.nombre_usuario, usuario.password_hash, usuario.empleado_id, usuario.rol),
             )
             conexion.commit()
             usuario.id = cursor.lastrowid
@@ -37,7 +37,7 @@ class UsuarioDAO:
         try:
             cursor = conexion.cursor()
             cursor.execute(
-                f"SELECT id, nombre_usuario, password_hash, empleado_id "
+                f"SELECT id, nombre_usuario, password_hash, empleado_id, rol "
                 f"FROM usuario WHERE nombre_usuario = {marcador_sql()}", (nombre,)
             )
             return UsuarioDAO._desde_fila(cursor.fetchone())
@@ -50,7 +50,7 @@ class UsuarioDAO:
         try:
             cursor = conexion.cursor()
             cursor.execute(
-                f"SELECT id, nombre_usuario, password_hash, empleado_id "
+                f"SELECT id, nombre_usuario, password_hash, empleado_id, rol "
                 f"FROM usuario WHERE empleado_id = {marcador_sql()}", (empleado_id,)
             )
             return UsuarioDAO._desde_fila(cursor.fetchone())
@@ -63,7 +63,7 @@ class UsuarioDAO:
         try:
             cursor = conexion.cursor()
             cursor.execute(
-                f"SELECT id, nombre_usuario, password_hash, empleado_id "
+                f"SELECT id, nombre_usuario, password_hash, empleado_id, rol "
                 f"FROM usuario WHERE id = {marcador_sql()}", (usuario_id,)
             )
             return UsuarioDAO._desde_fila(cursor.fetchone())
@@ -75,10 +75,11 @@ class UsuarioDAO:
         conexion = abrir_conexion()
         try:
             cursor = conexion.cursor()
-            cursor.execute("SELECT id, nombre_usuario, empleado_id FROM usuario ORDER BY id")
+            cursor.execute("SELECT id, nombre_usuario, empleado_id, rol FROM usuario ORDER BY id")
             return [
-                {"id": int(id_usuario), "nombre_usuario": nombre, "empleado_id": int(empleado_id)}
-                for id_usuario, nombre, empleado_id in cursor.fetchall()
+                {"id": int(id_usuario), "nombre_usuario": nombre,
+                "empleado_id": int(empleado_id), "rol": rol}
+                for id_usuario, nombre, empleado_id, rol in cursor.fetchall()
             ]
         finally:
             conexion.close()
@@ -95,6 +96,22 @@ class UsuarioDAO:
             actualizado = cursor.rowcount > 0
             conexion.commit()
             return actualizado
+        except Exception:
+            conexion.rollback()
+            raise
+        finally:
+            conexion.close()
+
+    @staticmethod
+    def asignar_rol(usuario_id, rol):
+        Usuario.validar_rol(rol)
+        conexion = abrir_conexion()
+        try:
+            cursor = conexion.cursor()
+            cursor.execute(f"UPDATE usuario SET rol = {marcador_sql()} WHERE id = {marcador_sql()}",
+                        (rol, usuario_id))
+            conexion.commit()
+            return cursor.rowcount > 0
         except Exception:
             conexion.rollback()
             raise

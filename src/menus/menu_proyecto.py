@@ -1,4 +1,5 @@
-from menus.validaciones import (
+from validaciones import (
+    FormularioCancelado, avisar_cancelacion, aviso_cancelacion, leer_id_existente, leer_entrada, leer_secreto,
     ErrorFormulario, explicar_error, preguntar_reintento,
     leer_texto, leer_fecha, leer_entero,
     leer_confirmacion
@@ -18,14 +19,21 @@ def mostrar_menu_proyecto():
     print("0. Volver al menu principal")
 
 
-def main_proyecto():
+def main_proyecto(usuario_actual=None):
+    from servicios.autorizacion import exigir_admin
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
     reintento = None
     while True:
         hubo_error = False
         if reintento is None:
             limpiar_pantalla()
             mostrar_menu_proyecto()
-            opcion = input("Seleccione una opcion: ")
+            aviso_cancelacion()
+            opcion = input("Seleccione una opción: ").strip()
             limpiar_pantalla()
 
         else:
@@ -34,14 +42,16 @@ def main_proyecto():
             limpiar_pantalla()
         if opcion == "1":
             try:
-                nombre = leer_texto("Nombre: ", campo="Nombre", maximo=100)
+                nombre = leer_texto("Nombre: ", campo="Nombre", maximo=50, tipo="proyecto")
                 fecha_inicio = leer_fecha("Fecha de inicio (AAAA-MM-DD): ")
-                descripcion = leer_texto("Descripcion: ", campo="La descripcion", maximo=500)
+                descripcion = leer_texto("Descripcion: ", campo="La descripcion", maximo=100)
                 if not nombre or not descripcion:
                     raise ErrorFormulario("Nombre y descripcion son obligatorios.")
                 proyecto = Proyecto(nombre, fecha_inicio, descripcion)
                 ProyectoDao.insertar(proyecto)
                 print("Proyecto registrado con ID:", proyecto._id_proyecto)
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'registrar proyecto')
                 hubo_error = True
@@ -66,12 +76,14 @@ def main_proyecto():
 
         elif opcion == "3":
             try:
-                id_proyecto = leer_entero("ID del proyecto: ")
+                id_proyecto = leer_id_existente("ID del proyecto: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
                     raise ErrorFormulario("Proyecto no encontrado.")
                 else:
                     print(f"ID: {p._id_proyecto} | {p._nombre} | Inicio: {p._fecha_inicio} | {p._descripcion}")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'buscar proyecto')
                 hubo_error = True
@@ -85,13 +97,13 @@ def main_proyecto():
 
         elif opcion == "4":
             try:
-                id_proyecto = leer_entero("ID del proyecto a actualizar: ")
+                id_proyecto = leer_id_existente("ID del proyecto a actualizar: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
                     raise ErrorFormulario("Proyecto no encontrado.")
-                nombre = leer_texto(f"Nombre [{p._nombre}]: ", obligatorio=False, campo="Nombre", maximo=100)
+                nombre = leer_texto(f"Nombre [{p._nombre}]: ", obligatorio=False, campo="Nombre", maximo=50, tipo="proyecto")
                 fecha_texto = leer_fecha(f"Fecha de inicio [{p._fecha_inicio}] (AAAA-MM-DD): ", obligatorio=False)
-                descripcion = leer_texto(f"Descripcion [{p._descripcion}]: ", obligatorio=False, campo="La descripcion", maximo=500)
+                descripcion = leer_texto(f"Descripcion [{p._descripcion}]: ", obligatorio=False, campo="La descripcion", maximo=100)
                 if not (nombre or fecha_texto or descripcion):
                     raise ErrorFormulario("No ingresaste cambios.")
                 fecha = fecha_texto if fecha_texto is not None else p._fecha_inicio
@@ -105,6 +117,8 @@ def main_proyecto():
                     print("Proyecto actualizado.")
                 else:
                     raise ErrorFormulario("No se detectaron cambios guardados.")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'actualizar proyecto')
                 hubo_error = True
@@ -118,7 +132,7 @@ def main_proyecto():
 
         elif opcion == "5":
             try:
-                id_proyecto = leer_entero("ID del proyecto a eliminar: ")
+                id_proyecto = leer_id_existente("ID del proyecto a eliminar: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto")
                 p = ProyectoDao.buscar_por_id(id_proyecto)
                 if p is None:
                     raise ErrorFormulario("Proyecto no encontrado.")
@@ -130,6 +144,8 @@ def main_proyecto():
                         raise ErrorFormulario("No se pudo eliminar el proyecto.")
                 else:
                     print("Eliminacion cancelada.")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'eliminar proyecto')
                 hubo_error = True
@@ -145,7 +161,7 @@ def main_proyecto():
             return
         else:
             print("Opcion no valida.")
-        if reintento is not None or hubo_error:
+        if reintento is not None:
             continue
         input("\nPresione Enter para continuar...")
 

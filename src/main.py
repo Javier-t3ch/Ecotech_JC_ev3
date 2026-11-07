@@ -12,37 +12,48 @@ from menus.menu_dominio_usuario import menu_dominio_usuario
 from menus.menu_dominio_gestionPermisos import menu_dominio_gestionPermisos
 from menus.menu_dominio_gestionDepartamento import menu_dominio_gestionDepartamento
 from complementos.complementos import limpiar_pantalla
+from servicios.autorizacion import exigir_admin
 
 
-def menu_modulos():
+def menu_modulos(usuario_actual):
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
     gestion_permisos = GestionPermisos()
     gestion_departamentos = GestionDepartamento()
     while True:
+        try:
+            exigir_admin(usuario_actual)
+        except PermissionError as error:
+            print(error)
+            return
         limpiar_pantalla()
         print("\n===== MÓDULOS ECOTECH =====")
         print("1. Empleado")
         print("2. Departamento")
         print("3. Proyecto")
         print("4. Registro de Tiempo")
-        print("5. Usuario (cuentas reales)")
-        print("6. Gestión de Permisos (demostración)")
-        print("7. Gestión de Departamento (demostración)")
+        print("5. Usuario ")
+        print("6. Gestión de Permisos ")
+        print("7. Gestión de Departamento ")
         print("0. Volver al menú privado")
         opcion = input("Seleccione una opción: ").strip()
         if opcion == "1":
-            menu_dominio_empleado()
+            menu_dominio_empleado(usuario_actual)
         elif opcion == "2":
-            menu_dominio_departamento()
+            menu_dominio_departamento(usuario_actual)
         elif opcion == "3":
-            menu_dominio_proyecto()
+            menu_dominio_proyecto(usuario_actual)
         elif opcion == "4":
-            menu_dominio_registro_tiempo()
+            menu_dominio_registro_tiempo(usuario_actual)
         elif opcion == "5":
-            menu_dominio_usuario()
+            menu_dominio_usuario(usuario_actual)
         elif opcion == "6":
-            menu_dominio_gestionPermisos(gestion_permisos)
+            menu_dominio_gestionPermisos(gestion_permisos, usuario_actual)
         elif opcion == "7":
-            menu_dominio_gestionDepartamento(gestion_departamentos)
+            menu_dominio_gestionDepartamento(gestion_departamentos, usuario_actual)
         elif opcion == "0":
             return
         else:
@@ -57,11 +68,12 @@ def main():
             if input("Enter para reintentar o 0 para salir: ").strip() == "0":
                 return
             continue
-        opcion = menu_privado(usuario_actual, menu_modulos=menu_modulos)
+        opcion = menu_privado(usuario_actual, menu_modulos=lambda: menu_modulos(usuario_actual))
         usuario_actual = None
         if opcion == "0":
             return
         print("Sesión cerrada. Ingrese nuevamente.")
+        input("\nPresione Enter para continuar...")
 
 
 if __name__ == "__main__":

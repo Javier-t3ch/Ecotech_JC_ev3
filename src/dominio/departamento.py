@@ -1,6 +1,7 @@
 from dominio import empleado
 from dominio import proyecto
 from dominio.empleado import Empleado
+from dominio.cargo import CARGO_RECURSOS_HUMANOS
 from dominio.proyecto import Proyecto
 
 class Departamento:
@@ -17,7 +18,7 @@ class Departamento:
     def contratar_empleado(self, empleado: Empleado, encargado: Empleado) -> bool:
         if empleado is None or encargado is None:
             return False
-        if encargado._cargo != "Recursos Humanos":
+        if encargado._id_cargo != CARGO_RECURSOS_HUMANOS:
             return False
         if empleado in self._empleados:
             return False
@@ -61,6 +62,7 @@ class Departamento:
         return tuple(self._empleados)
     def cantidad_empleados(self) -> int:
         return len(self._empleados)
+
 
 
 

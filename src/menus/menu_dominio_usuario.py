@@ -1,15 +1,21 @@
+from validaciones import FormularioCancelado, avisar_cancelacion, aviso_cancelacion, leer_id_existente, leer_entrada, leer_secreto
 
-from getpass import getpass
 
-from complementos.complementos import limpiar_pantalla
+from complementos.complementos import limpiar_pantalla, pausar_y_limpiar
 from dominio.usuario import Usuario
 from menus.menu_usuario import pedir_dato, solicitar_registro
-from menus.validaciones import ErrorFormulario, explicar_error, preguntar_reintento
+from validaciones import ErrorFormulario, explicar_error, preguntar_reintento
 from persistencia.usuario_dao import UsuarioDAO
 from servicios.autenticacion import autenticar, cambiar_contrasena
+from servicios.autorizacion import exigir_admin
 
 
-def menu_dominio_usuario():
+def menu_dominio_usuario(usuario_actual=None):
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
     reintento = None
     while True:
         opcion = reintento
@@ -22,6 +28,7 @@ def menu_dominio_usuario():
             print("3. Cambiar contraseña")
             print("4. Listar cuentas registradas")
             print("0. Volver al menú principal")
+            aviso_cancelacion()
             opcion = input("Seleccione una opción: ").strip()
         limpiar_pantalla()
 
@@ -29,19 +36,18 @@ def menu_dominio_usuario():
             return
         try:
             if opcion == "1":
-                if solicitar_registro() is None:
-                    raise ErrorFormulario("No fue posible registrar la cuenta.")
+                solicitar_registro(usuario_actual)
             elif opcion == "2":
-                nombre = input("Usuario: ")
-                clave = getpass("Contraseña: ")
+                nombre = pedir_dato("Usuario: ", Usuario.normalizar_usuario)
+                clave = leer_secreto("Contraseña: ")
                 if autenticar(nombre, clave) is None:
                     raise ErrorFormulario("Usuario o contraseña incorrectos.")
                 print("Credenciales correctas. La sesión actual no cambia.")
             elif opcion == "3":
-                nombre = pedir_dato("Usuario: ", Usuario.normalizar_usuario, leer=lambda mensaje: input(mensaje))
-                actual = getpass("Contraseña actual: ")
-                nueva = pedir_dato("Nueva contraseña (mínimo 6 caracteres): ", Usuario.validar_clave, getpass)
-                while getpass("Repita la nueva contraseña: ") != nueva:
+                nombre = pedir_dato("Usuario: ", Usuario.normalizar_usuario)
+                actual = leer_secreto("Contraseña actual: ")
+                nueva = pedir_dato("Nueva contraseña (mínimo 6 caracteres): ", Usuario.validar_clave, leer_secreto)
+                while leer_secreto("Repita la nueva contraseña: ") != nueva:
                     print("Las contraseñas no coinciden. Repita la confirmación.")
                 if not cambiar_contrasena(nombre, actual, nueva):
                     raise ErrorFormulario("Usuario o contraseña actual incorrectos, o clave sin cambios.")
@@ -57,10 +63,11 @@ def menu_dominio_usuario():
                 print("No se muestran contraseñas ni hashes.")
             else:
                 print("Opción no válida.")
-                continue
+        except FormularioCancelado:
+            avisar_cancelacion()
         except Exception as error:
             explicar_error(error, "procesar la cuenta de usuario")
             if preguntar_reintento():
                 reintento = opcion
-            continue
-        input("\nPresione Enter para continuar...")
+                continue
+        pausar_y_limpiar()

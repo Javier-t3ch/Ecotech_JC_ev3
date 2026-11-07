@@ -1,4 +1,5 @@
-from menus.validaciones import (
+from validaciones import (
+    FormularioCancelado, avisar_cancelacion, aviso_cancelacion, leer_id_existente, leer_entrada, leer_secreto,
     ErrorFormulario, explicar_error, preguntar_reintento,
     leer_texto, leer_fecha, leer_entero,
     leer_confirmacion
@@ -20,14 +21,21 @@ def mostrar_menu_RegistroTiempo():
     print("0. Volver al menu principal")
 
 
-def main_RegistroTiempo():
+def main_RegistroTiempo(usuario_actual=None):
+    from servicios.autorizacion import exigir_admin
+    try:
+        exigir_admin(usuario_actual)
+    except PermissionError as error:
+        print(error)
+        return
     reintento = None
     while True:
         hubo_error = False
         if reintento is None:
             limpiar_pantalla()
             mostrar_menu_RegistroTiempo()
-            opcion = input("Seleccione una opcion: ")
+            aviso_cancelacion()
+            opcion = input("Seleccione una opción: ").strip()
             limpiar_pantalla()
 
         else:
@@ -36,19 +44,21 @@ def main_RegistroTiempo():
             limpiar_pantalla()
         if opcion == "1":
             try:
-                empleado_id = leer_entero("ID del empleado: ")
-                proyecto_id = leer_entero("ID del proyecto: ")
+                empleado_id = leer_id_existente("ID del empleado: ", EmpleadoDAO.buscar_por_id, etiqueta="El empleado")
+                proyecto_id = leer_id_existente("ID del proyecto: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto",
+                    condicion=lambda p: RegistroTiempoDAO.empleado_asignado(empleado_id, p._id_proyecto),
+                    mensaje_condicion="El empleado no está asignado a ese proyecto. Elija otro ID.")
                 empleado = EmpleadoDAO.buscar_por_id(empleado_id)
                 proyecto = ProyectoDao.buscar_por_id(proyecto_id)
                 if empleado is None or proyecto is None:
                     raise ErrorFormulario("Empleado o proyecto no encontrado.")
                 if not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
                     raise ErrorFormulario("El empleado no esta asignado a ese proyecto.")
-                horas = leer_entero("Horas trabajadas: ")
+                horas = leer_entero("Horas trabajadas: ", maximo=24)
                 if horas <= 0:
                     raise ErrorFormulario("Las horas deben ser mayores que cero.")
                 fecha = leer_fecha("Fecha trabajada (AAAA-MM-DD): ")
-                descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=500)
+                descripcion = leer_texto("Descripcion de la tarea: ", campo="La descripcion", maximo=100)
                 if not descripcion:
                     raise ErrorFormulario("La descripcion no puede quedar vacia.")
                 registro = RegistroTiempo(horas, fecha, descripcion, empleado, proyecto)
@@ -56,6 +66,8 @@ def main_RegistroTiempo():
                     print("Registro creado con ID:", registro._id_registro)
                 else:
                     raise ErrorFormulario("No se pudo guardar el registro.")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'registrar registro de tiempo')
                 hubo_error = True
@@ -80,12 +92,14 @@ def main_RegistroTiempo():
 
         elif opcion == "3":
             try:
-                id_registro = leer_entero("ID del registro: ")
+                id_registro = leer_id_existente("ID del registro: ", RegistroTiempoDAO.buscar_por_id, etiqueta="El registro")
                 r = RegistroTiempoDAO.buscar_por_id(id_registro)
                 if r is None:
                     raise ErrorFormulario("Registro no encontrado.")
                 else:
                     print(f"ID: {r._id_registro} | Empleado: {r._empleado._id} | Proyecto: {r._proyecto._id_proyecto} | Horas: {r._horas_trabajadas} | Fecha: {r._fecha_trabajada} | {r._descripcion_tarea}")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'buscar registro de tiempo')
                 hubo_error = True
@@ -99,16 +113,18 @@ def main_RegistroTiempo():
 
         elif opcion == "4":
             try:
-                id_registro = leer_entero("ID del registro a actualizar: ")
+                id_registro = leer_id_existente("ID del registro a actualizar: ", RegistroTiempoDAO.buscar_por_id, etiqueta="El registro")
                 r = RegistroTiempoDAO.buscar_por_id(id_registro)
                 if r is None:
                     raise ErrorFormulario("Registro no encontrado.")
                 print("Deja el campo vacio si no deseas cambiarlo.")
-                horas_texto = leer_entero(f"Horas [{r._horas_trabajadas}]: ", obligatorio=False)
+                horas_texto = leer_entero(f"Horas [{r._horas_trabajadas}]: ", obligatorio=False, maximo=24)
                 fecha_texto = leer_fecha(f"Fecha [{r._fecha_trabajada}] (AAAA-MM-DD): ", obligatorio=False)
-                descripcion = leer_texto(f"Descripcion [{r._descripcion_tarea}]: ", obligatorio=False, campo="La descripcion", maximo=500)
-                empleado_texto = leer_entero(f"ID empleado [{r._empleado._id}]: ", obligatorio=False)
-                proyecto_texto = leer_entero(f"ID proyecto [{r._proyecto._id_proyecto}]: ", obligatorio=False)
+                descripcion = leer_texto(f"Descripcion [{r._descripcion_tarea}]: ", obligatorio=False, campo="La descripcion", maximo=100)
+                empleado_texto = leer_id_existente(f"ID empleado [{r._empleado._id}]: ", EmpleadoDAO.buscar_por_id, etiqueta="El empleado", obligatorio=False)
+                proyecto_texto = leer_id_existente(f"ID proyecto [{r._proyecto._id_proyecto}]: ", ProyectoDao.buscar_por_id, etiqueta="El proyecto", obligatorio=False,
+                    condicion=lambda p: RegistroTiempoDAO.empleado_asignado(empleado_texto or r._empleado._id, p._id_proyecto),
+                    mensaje_condicion="El empleado no está asignado a ese proyecto. Elija otro ID.")
 
                 if not (horas_texto or fecha_texto or descripcion or empleado_texto or proyecto_texto):
                     raise ErrorFormulario("No ingresaste cambios.")
@@ -122,8 +138,13 @@ def main_RegistroTiempo():
                 proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 if empleado is None or proyecto is None:
                     raise ErrorFormulario("El empleado o proyecto seleccionado no existe.")
-                if not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
-                    raise ErrorFormulario("El empleado no esta asignado a ese proyecto.")
+                while not RegistroTiempoDAO.empleado_asignado(empleado._id, proyecto._id_proyecto):
+                    print("El empleado no está asignado a ese proyecto. Seleccione otro.")
+                    id_proyecto = leer_id_existente("ID de proyecto asignado: ", ProyectoDao.buscar_por_id,
+                        etiqueta="El proyecto",
+                        condicion=lambda p: RegistroTiempoDAO.empleado_asignado(empleado._id, p._id_proyecto),
+                        mensaje_condicion="El empleado no está asignado a ese proyecto.")
+                    proyecto = ProyectoDao.buscar_por_id(id_proyecto)
                 actualizado = RegistroTiempo(
                     horas_trabajadas=horas,
                     fecha_trabajada=fecha,
@@ -136,6 +157,8 @@ def main_RegistroTiempo():
                     print("Registro actualizado.")
                 else:
                     raise ErrorFormulario("No se detectaron cambios guardados.")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'actualizar registro de tiempo')
                 hubo_error = True
@@ -149,7 +172,7 @@ def main_RegistroTiempo():
 
         elif opcion == "5":
             try:
-                id_registro = leer_entero("ID del registro a eliminar: ")
+                id_registro = leer_id_existente("ID del registro a eliminar: ", RegistroTiempoDAO.buscar_por_id, etiqueta="El registro")
                 r = RegistroTiempoDAO.buscar_por_id(id_registro)
                 if r is None:
                     raise ErrorFormulario("Registro no encontrado.")
@@ -161,6 +184,8 @@ def main_RegistroTiempo():
                         raise ErrorFormulario("No se pudo eliminar el registro.")
                 else:
                     print("Eliminacion cancelada.")
+            except FormularioCancelado:
+                avisar_cancelacion()
             except ValueError as error:
                 explicar_error(error, 'eliminar registro de tiempo')
                 hubo_error = True
@@ -176,7 +201,7 @@ def main_RegistroTiempo():
             return
         else:
             print("Opcion no valida.")
-        if reintento is not None or hubo_error:
+        if reintento is not None:
             continue
         input("\nPresione Enter para continuar...")
 

@@ -1,4 +1,4 @@
-import math
+from servicios.indicadores_api import extraer_primero
 import requests
 
 URL_DOLAR = "https://mindicador.cl/api/dolar"
@@ -10,27 +10,6 @@ def obtener_datos():
     respuesta.raise_for_status()
     return respuesta.json()
 
-
-def extraer_primero(datos):
-    if not isinstance(datos, dict):
-        raise ValueError("La respuesta no es un objeto JSON.")
-    if datos.get("codigo") != "dolar":
-        raise ValueError("El indicador recibido no es el dólar.")
-    if datos.get("unidad_medida") != "Pesos":
-        raise ValueError("La unidad del indicador no es pesos.")
-    serie = datos.get("serie")
-    if not isinstance(serie, list) or not serie:
-        raise ValueError("No hay valores disponibles en la serie.")
-    registro = serie[0]
-    if not isinstance(registro, dict):
-        raise ValueError("El registro no tiene el formato esperado.")
-    fecha = registro.get("fecha")
-    valor = registro.get("valor")
-    if not isinstance(fecha, str) or not fecha.strip():
-        raise ValueError("Falta la fecha del indicador.")
-    if type(valor) not in (int, float) or not math.isfinite(valor) or valor <= 0:
-        raise ValueError("El valor del indicador no es válido.")
-    return fecha, valor
 
 
 def mostrar_indicador(datos, origen):

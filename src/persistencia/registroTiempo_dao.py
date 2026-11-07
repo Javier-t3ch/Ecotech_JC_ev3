@@ -1,5 +1,6 @@
 from persistencia.conexion import abrir_conexion, marcador_sql
 from dominio.registroTiempo import RegistroTiempo
+from validaciones import validar_texto, validar_correo, validar_telefono
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
 
@@ -42,6 +43,7 @@ class RegistroTiempoDAO:
         )
 
     def insertar(registroTiempo):
+        validar_texto(registroTiempo._descripcion_tarea, tipo="descripcion", campo="Descripción", maximo=100)
         if registroTiempo._empleado is None or registroTiempo._proyecto is None:
             return False
         if registroTiempo._empleado._id is None or registroTiempo._proyecto._id_proyecto is None:
@@ -82,6 +84,7 @@ class RegistroTiempoDAO:
                 conexion.close()
 
     def actualizar(registroTiempo):
+        validar_texto(registroTiempo._descripcion_tarea, tipo="descripcion", campo="Descripción", maximo=100)
         if registroTiempo._empleado is None or registroTiempo._proyecto is None:
             return False
         if registroTiempo._empleado._id is None or registroTiempo._proyecto._id_proyecto is None:
@@ -178,3 +181,18 @@ class RegistroTiempoDAO:
         finally:
             if conexion:
                 conexion.close()
+
+    @staticmethod
+    def listar_por_empleado(empleado_id):
+        conexion = abrir_conexion()
+        try:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "SELECT id, horas_trabajadas, fecha_trabajada, descripcion_tarea, "
+                f"empleado_id, proyecto_id FROM registro_tiempo WHERE empleado_id = {marcador_sql()} ORDER BY fecha_trabajada, id",
+                (empleado_id,),
+            )
+            filas = cursor.fetchall()
+        finally:
+            conexion.close()
+        return [RegistroTiempoDAO._fila_de_registroTiempo(fila) for fila in filas]

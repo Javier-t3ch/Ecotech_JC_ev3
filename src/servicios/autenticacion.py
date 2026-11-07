@@ -3,6 +3,7 @@ import bcrypt
 from dominio.usuario import Usuario
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.usuario_dao import UsuarioDAO
+from servicios.autorizacion import exigir_admin
 
 MAX_BYTES_BCRYPT = 72
 
@@ -15,7 +16,9 @@ def crear_hash(clave):
     return bcrypt.hashpw(clave_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
-def registrar_usuario(empleado_id, nombre, clave):
+def registrar_usuario(empleado_id, nombre, clave, sesion=None):
+
+    exigir_admin(sesion)
     nombre = Usuario.normalizar_usuario(nombre)
     if type(empleado_id) is not int or empleado_id <= 0:
         raise ValueError("El ID del empleado debe ser positivo.")
@@ -26,7 +29,7 @@ def registrar_usuario(empleado_id, nombre, clave):
     if UsuarioDAO.buscar_por_empleado(empleado_id) is not None:
         raise ValueError("Este empleado ya tiene una cuenta.")
 
-    cuenta = Usuario(nombre, crear_hash(clave), empleado_id)
+    cuenta = Usuario(nombre, crear_hash(clave), empleado_id, rol="empleado")
     return UsuarioDAO.insertar(cuenta)
 
 
@@ -53,6 +56,7 @@ def autenticar(nombre, clave):
         "id": cuenta.id,
         "empleado_id": cuenta.empleado_id,
         "nombre_usuario": cuenta.nombre_usuario,
+        "rol": cuenta.rol,
     }
 
 

@@ -1,5 +1,6 @@
 from persistencia.conexion import abrir_conexion, marcador_sql
 from dominio.proyecto import Proyecto
+from validaciones import validar_texto, validar_correo, validar_telefono
 from dominio.registroTiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
 
@@ -54,7 +55,13 @@ class ProyectoDao:
         return proyecto
 
     @staticmethod
+    def _validar_datos(proyecto):
+        validar_texto(proyecto._nombre, tipo="proyecto", campo="Nombre del proyecto", maximo=50)
+        validar_texto(proyecto._descripcion, tipo="descripcion", campo="Descripción", maximo=100)
+
+    @staticmethod
     def insertar(proyecto):
+        ProyectoDao._validar_datos(proyecto)
         conexion = None
         try:
             conexion = abrir_conexion()
@@ -77,6 +84,7 @@ class ProyectoDao:
 
     @staticmethod
     def actualizar(proyecto):
+        ProyectoDao._validar_datos(proyecto)
         conexion = None
         try:
             conexion = abrir_conexion()
@@ -187,3 +195,20 @@ class ProyectoDao:
     @staticmethod
     def desvincular_empleado(proyecto, empleado):
         return ProyectoDao._cambiar_empleado(proyecto, empleado, False)
+
+    @staticmethod
+    def listar_por_empleado(empleado_id):
+        conexion = abrir_conexion()
+        try:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "SELECT p.id, p.nombre, p.fecha_inicio, p.descripcion "
+                "FROM proyecto AS p INNER JOIN proyecto_empleado AS pe "
+                "ON pe.proyecto_id = p.id "
+                f"WHERE pe.empleado_id = {marcador_sql()} ORDER BY p.id",
+                (empleado_id,),
+            )
+            filas = cursor.fetchall()
+        finally:
+            conexion.close()
+        return [ProyectoDao._fila_a_proyecto(fila, cargar_relaciones=False) for fila in filas]

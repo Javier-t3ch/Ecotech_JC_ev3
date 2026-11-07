@@ -1,23 +1,17 @@
-from dominio.usuario import Usuario
+from persistencia.usuario_dao import UsuarioDAO
+from servicios.autorizacion import exigir_admin
 
 
 class GestionPermisos:
-    def __init__(self):
-        self._permisos_por_usuario = {}
+    def listar_cuentas(self, sesion):
+        exigir_admin(sesion)
+        return UsuarioDAO.listar()
 
-    def listar_permisos(self, id_usuario):
-        return tuple(sorted(self._permisos_por_usuario.get(id_usuario, set())))
-
-    def otorgar_permiso(self, encargado, usuario, permiso):
-        if not isinstance(encargado, dict) or encargado.get("nombre_usuario") != "admin":
+    def otorgar_admin(self, sesion, id_usuario):
+        exigir_admin(sesion)
+        cuenta = UsuarioDAO.buscar_por_id(id_usuario)
+        if cuenta is None:
+            raise ValueError("La cuenta seleccionada no existe.")
+        if cuenta.rol == "admin":
             return False
-        if not isinstance(usuario, Usuario) or type(usuario.id) is not int:
-            return False
-        if not isinstance(permiso, str) or not permiso.strip():
-            return False
-        nombre = permiso.strip()
-        permisos = self._permisos_por_usuario.setdefault(usuario.id, set())
-        if nombre in permisos:
-            return False
-        permisos.add(nombre)
-        return True
+        return UsuarioDAO.asignar_rol(cuenta.id, "admin")

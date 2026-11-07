@@ -1,45 +1,53 @@
 from dominio.departamento import Departamento
+from validaciones import validar_texto
+from persistencia.departamento_dao import DepartamentoDAO
+from persistencia.empleado_dao import EmpleadoDAO
+from servicios.autorizacion import exigir_admin
 
 
 class GestionDepartamento:
+    def listar_departamentos(self, sesion):
+        exigir_admin(sesion)
+        return DepartamentoDAO.listar()
 
-    def __init__(self):
-        self._departamentos = []
+    def buscar_departamento(self, id_departamento, sesion):
+        exigir_admin(sesion)
+        return DepartamentoDAO.buscar_por_id(id_departamento)
 
-    def crear_departamento(self, nombre):
-        if not nombre or nombre.strip() == "":
-            return False
-        nombre = nombre.strip()
-        if self.buscar_departamento(nombre) != False:
-            return False
-        departamento = Departamento(nombre)
-        self._departamentos.append(departamento)
-        return departamento
+    def _validar_nombre(self, nombre, excluir_id=None):
+        nombre = validar_texto(nombre, tipo="departamento", campo="Nombre de departamento", maximo=50)
+        for existente in DepartamentoDAO.listar():
+            if (existente._nombre.casefold() == nombre.casefold()
+                    and existente._id_departamento != excluir_id):
+                raise ValueError("Ya existe un departamento con ese nombre.")
+        return nombre
 
-    def eliminar_departamento(self, departamento):
-        if departamento not in self._departamentos:
-            return False
+    def _validar_gerente(self, id_gerente):
+        if id_gerente is not None and EmpleadoDAO.buscar_por_id(id_gerente) is None:
+            raise ValueError("El gerente indicado no existe.")
+
+    def crear_departamento(self, nombre, sesion, id_gerente=None):
+        exigir_admin(sesion)
+        nombre = self._validar_nombre(nombre)
+        self._validar_gerente(id_gerente)
+        return DepartamentoDAO.insertar(Departamento(nombre, id_gerente=id_gerente))
+
+    def editar_departamento(self, id_departamento, nuevo_nombre, sesion, id_gerente=None):
+        exigir_admin(sesion)
+        departamento = DepartamentoDAO.buscar_por_id(id_departamento)
+        if departamento is None:
+            raise ValueError("Departamento no encontrado.")
+        nombre = self._validar_nombre(nuevo_nombre, id_departamento)
+        self._validar_gerente(id_gerente)
+        departamento._nombre = nombre
+        departamento._id_gerente = id_gerente
+        return DepartamentoDAO.actualizar(departamento)
+
+    def eliminar_departamento(self, id_departamento, sesion):
+        exigir_admin(sesion)
+        departamento = DepartamentoDAO.buscar_por_id(id_departamento)
+        if departamento is None:
+            raise ValueError("Departamento no encontrado.")
         if departamento._empleados or departamento._proyectos:
-            return False
-        self._departamentos.remove(departamento)
-        return True
-
-    def editar_departamento(self, departamento, nuevo_nombre):
-        if departamento not in self._departamentos:
-            return False
-        if not nuevo_nombre or nuevo_nombre.strip() == "":
-            return False
-        nuevo_nombre = nuevo_nombre.strip()
-        otro_departamento = self.buscar_departamento(nuevo_nombre)
-        if otro_departamento != False and otro_departamento != departamento:
-            return False
-        departamento._nombre = nuevo_nombre
-        return True
-
-    def buscar_departamento(self, nombre):
-        if not nombre or nombre.strip() == "":
-            return False
-        for departamento in self._departamentos:
-            if departamento._nombre.lower() == nombre.strip().lower():
-                return departamento
-        return False
+            raise ValueError("No se puede eliminar un departamento con empleados o proyectos.")
+        return DepartamentoDAO.eliminar(id_departamento)

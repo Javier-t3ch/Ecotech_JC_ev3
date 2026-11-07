@@ -1,5 +1,6 @@
 from persistencia.conexion import abrir_conexion, marcador_sql
 from dominio.departamento import Departamento
+from validaciones import validar_texto, validar_correo, validar_telefono
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDao
 
@@ -40,6 +41,7 @@ class DepartamentoDAO:
 
     @staticmethod
     def insertar(departamento):
+        validar_texto(departamento._nombre, tipo="departamento", campo="Departamento", maximo=50)
         conexion = None
         try:
             conexion = abrir_conexion()
@@ -62,6 +64,7 @@ class DepartamentoDAO:
 
     @staticmethod
     def actualizar(departamento):
+        validar_texto(departamento._nombre, tipo="departamento", campo="Departamento", maximo=50)
         conexion = None
         try:
             conexion = abrir_conexion()
@@ -192,3 +195,21 @@ class DepartamentoDAO:
             "departamento_proyecto", departamento._id_departamento,
             "proyecto_id", proyecto._id_proyecto, False
         )
+
+    @staticmethod
+    def listar_por_empleado(empleado_id):
+        conexion = abrir_conexion()
+        try:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "SELECT d.id, d.nombre, d.id_gerente "
+                "FROM departamento AS d INNER JOIN departamento_empleado AS de "
+                "ON de.departamento_id = d.id "
+                f"WHERE de.empleado_id = {marcador_sql()} ORDER BY d.id",
+                (empleado_id,),
+            )
+            filas = cursor.fetchall()
+        finally:
+            conexion.close()
+        return [Departamento(nombre=fila[1], id_departamento=fila[0], id_gerente=fila[2])
+                for fila in filas]
